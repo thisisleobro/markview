@@ -56,3 +56,4 @@ CMakeUserPresets.json
 .cache
 
 build
+vendor/
