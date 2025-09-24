@@ -9,10 +9,14 @@ add_subdirectory(vendor/cmark)
 # 	set(CMAKE_WIN32_EXECUTABLE ON)
 # endif()
 
-# add_executable(${PROJECT_NAME} WIN32)
-add_executable(${PROJECT_NAME})
+add_executable(${PROJECT_NAME} WIN32)
+# add_executable(${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME} PRIVATE src/main.c)
+
+if(WIN32)
+    target_sources(${PROJECT_NAME} PRIVATE src/WinMain.c)
+endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE webview::core_static)
 target_link_libraries(${PROJECT_NAME} PRIVATE cmark)
