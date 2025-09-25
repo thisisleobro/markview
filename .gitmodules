@@ -4,3 +4,6 @@
 [submodule "vendor/cmark"]
 	path = vendor/cmark
 	url = https://github.com/commonmark/cmark.git
+[submodule "vendor/cmark-gfm"]
+	path = vendor/cmark-gfm
+	url = https://github.com/github/cmark-gfm

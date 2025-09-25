@@ -5,23 +5,25 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <cmark.h>
+// #include <cmark.h>
+#include <cmark-gfm.h>
+#include <cmark_ctype.h>
+#include <cmark-gfm_version.h>
+#include <cmark-gfm_export.h>
+#include <cmark-gfm-extension_api.h>
+#include <cmark-gfm-core-extensions.h>
 #include <string.h>
 
 #define PROGRAM_NAME "markview"
 #define TITLE_MAX_SIZE 256
+
 
 // #ifdef _WIN32
 // #include <windows.h>
 // #endif
 
 char* read_file(const char* filename) {
-    FILE *file = NULL;
-    errno_t err = fopen_s(&file, filename, "rb");
-    if (err != 0 || file == NULL) {
-        perror("Failed to open file");
-        return NULL;
-    }
+    FILE *file = fopen(filename, "rb");
 
     // Seek to end to find file size
     fseek(file, 0, SEEK_END);
@@ -42,29 +44,47 @@ char* read_file(const char* filename) {
     return content;
 }
 
-char* loadScriptContent(char* filename)
+char* loadContentFromDisk(char* filename)
 {
 	return read_file(filename);
 }
 
 int main(int argc, char** argv)
 {
-	char* filename = argv[1];
 	char* html = NULL;
 	char windowTitle[TITLE_MAX_SIZE];
 
-	if (filename)
+
+	if (argc > 1)
 	{
+		char* filename = argv[1];
 		// 1. Load the markdow file
-		char* markdown = read_file(argv[1]);
+		char* markdown = read_file(filename);
 		if (!markdown) {
 			return 1;
 		}
 
 		// 2. Parse markdown to html
-		char* rawHtml = cmark_markdown_to_html(markdown, strlen(markdown), CMARK_OPT_DEFAULT);
+		https://medium.com/@krisgbaker/using-cmark-gfm-extensions-aad759894a89
+		cmark_gfm_core_extensions_ensure_registered();
+		cmark_parser* parser = cmark_parser_new(0);
+		cmark_syntax_extension* se = cmark_find_syntax_extension("table");
 
-		char* highlightJsLibTheme = loadScriptContent("default.min.css");
+		cmark_llist* list;
+
+		cmark_llist_append(cmark_get_default_mem_allocator(), list, se);
+
+		cmark_parser_attach_syntax_extension(parser, se);
+
+		cmark_parser_feed(parser, markdown, strlen(markdown));
+
+		cmark_node* node = cmark_parser_finish(parser);
+
+		char* rawHtml = cmark_render_html(node, 0, list);
+
+		// char* rawHtml = cmark_markdown_to_html(markdown, strlen(markdown), CMARK_OPT_SMART);
+
+		char* highlightJsLibTheme = loadContentFromDisk("prism.css");
 
 		char styleTag[] = "<style>%s</style>";
 		char* styles = malloc(strlen(styleTag) + strlen(highlightJsLibTheme) + 1);
@@ -90,9 +110,8 @@ int main(int argc, char** argv)
 			free(markdown);
 		}
 
+		snprintf(windowTitle, TITLE_MAX_SIZE - 1, "%s -  %s", PROGRAM_NAME, filename);
 	}
-
-	snprintf(windowTitle, TITLE_MAX_SIZE - 1, "%s -  %s", PROGRAM_NAME, filename);
 
 	printf("html: %s\n", html);
 
@@ -101,25 +120,23 @@ int main(int argc, char** argv)
 	webview_set_title(w, windowTitle);
 	// webview_set_size(w, 480, 320, WEBVIEW_HINT_NONE);
 	webview_set_html(w, html);
-
 	// webview_init(w, "hljs.highlightAll()");
 
-
 	printf("evaluate scripts\n");
-	char* highlightJsLib = loadScriptContent("highlight.min.js");
-	char* highlightJsLibJavascript = loadScriptContent("javascript.min.js");
+	char* highlightingLib = loadContentFromDisk("prism.min.js");
+	// char* highlightingLibJavascript = loadScriptContent("javascript.min.js");
 
-	webview_eval(w, highlightJsLib);
-	webview_eval(w, highlightJsLibJavascript);
+	webview_eval(w, highlightingLib);
+	// webview_eval(w, highlightingLibJavascript);
 	webview_eval(w, "hljs.highlightAll()");
 	// webview_eval(w, "alert(1)");
 	
 	webview_run(w);
 	webview_destroy(w);
 
-	if(highlightJsLib)
+	if(highlightingLib)
 	{
-		free(highlightJsLib);
+		free(highlightingLib);
 	}
 
 	// if(highlightJsLibTheme)
@@ -127,10 +144,10 @@ int main(int argc, char** argv)
 	// 	free(highlightJsLibTheme);
 	// }
 
-	if(highlightJsLibJavascript)
-	{
-		free(highlightJsLibJavascript);
-	}
+	// if(highlightJsLibJavascript)
+	// {
+	// 	free(highlightJsLibJavascript);
+	// }
 	
 	if (html)
 	{
