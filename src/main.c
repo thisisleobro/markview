@@ -1,3 +1,4 @@
+#include "markview/markdown.h"
 #include <webview/errors.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,80 +15,32 @@
 #include <cmark-gfm-extension_api.h>
 #include <cmark-gfm-core-extensions.h>
 #include <string.h>
+#include <markview/file.h>
 
 #define PROGRAM_NAME "markview"
 #define TITLE_MAX_SIZE 256
 
 
-// #ifdef _WIN32
-// #include <windows.h>
-// #endif
-
-char* read_file(const char* filename) {
-    FILE *file = fopen(filename, "r");
-
-    // Seek to end to find file size
-    fseek(file, 0, SEEK_END);
-    long size = ftell(file);
-    rewind(file);
-
-    // Allocate buffer (+1 for null terminator)
-    char *content = malloc(size + 1);
-    if (!content) {
-        perror("Failed to allocate memory");
-        fclose(file);
-        return NULL;
-    }
-
-    fread(content, 1, size, file);
-    content[size] = '\0';  // Null-terminate the string
-    fclose(file);
-    return content;
-}
-
-char* loadContentFromDisk(char* filename)
-{
-	return read_file(filename);
-}
-
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
 	char* html = NULL;
 	char windowTitle[TITLE_MAX_SIZE];
 
-
-	if (argc > 1)
-	{
+	if (argc > 1) {
 		char* filename = argv[1];
 		// 1. Load the markdow file
-		char* markdown = read_file(filename);
+		char* markdown = markview_read_file(filename);
 		if (!markdown) {
+			printf("error reading markdown");
 			return 1;
 		}
 
 		// 2. Parse markdown to html
-		// https://medium.com/@krisgbaker/using-cmark-gfm-extensions-aad759894a89
-		cmark_gfm_core_extensions_ensure_registered();
-		cmark_parser* parser = cmark_parser_new(0);
-		cmark_syntax_extension* se = cmark_find_syntax_extension("table");
-
-		cmark_llist* list = NULL;
-
-		cmark_llist_append(cmark_get_default_mem_allocator(), list, se);
-
-		cmark_parser_attach_syntax_extension(parser, se);
-
-		cmark_parser_feed(parser, markdown, strlen(markdown));
-
-		cmark_node* node = cmark_parser_finish(parser);
-
-		char* rawHtml = cmark_render_html(node, 0, list);
-
 		// char* rawHtml = cmark_markdown_to_html(markdown, strlen(markdown), CMARK_OPT_SMART);
+		char* rawHtml = markdown_to_html(markdown, strlen(markdown), CMARK_OPT_DEFAULT | CMARK_OPT_FOOTNOTES);
 
-		char* highlightJsLibTheme = loadContentFromDisk("prism.css");
+		char* highlightJsLibTheme = markview_read_file("prism.css");
 
-		char styleTag[] = "<style>%s</style>";
+		char* styleTag = "<style>%s</style>";
 		char* styles = malloc(strlen(styleTag) + strlen(highlightJsLibTheme) + 1);
 		snprintf(styles, strlen(styleTag) + strlen(highlightJsLibTheme) + 1, styleTag, highlightJsLibTheme);
 
@@ -114,7 +67,7 @@ int main(int argc, char** argv)
 		snprintf(windowTitle, TITLE_MAX_SIZE - 1, "%s -  %s", PROGRAM_NAME, filename);
 	}
 
-	printf("html: %s\n", html);
+	// printf("html: %s\n", html);
 
 	// 3. webview_set_html(w, the_html);
 	webview_t w = webview_create(1, NULL);
@@ -124,9 +77,13 @@ int main(int argc, char** argv)
 	// webview_init(w, "hljs.highlightAll()");
 
 	printf("evaluate scripts\n");
-	char* highlightingLib = loadContentFromDisk("prism.min.js");
+	// printf("%s", highlightingLib);
 	// printf("highlightingLib:\n%s", highlightingLib);
 	// char* highlightingLibJavascript = loadScriptContent("javascript.min.js");
+	// webview_error_t evalError = webview_eval(w, highlightingLib);
+	char* highlightingLib = markview_read_file("prism.min.js");
+	// char tempBuffer[33];
+	// snprintf(tempBuffer, 32, "alert(%lld)", strlen(highlightingLib));
 	webview_error_t evalError = webview_eval(w, highlightingLib);
 	if (evalError == WEBVIEW_ERROR_OK) {
 		printf("eval ok");
