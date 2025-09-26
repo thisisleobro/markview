@@ -1,3 +1,4 @@
+#include <webview/errors.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <webview/api.h>
@@ -23,7 +24,7 @@
 // #endif
 
 char* read_file(const char* filename) {
-    FILE *file = fopen(filename, "rb");
+    FILE *file = fopen(filename, "r");
 
     // Seek to end to find file size
     fseek(file, 0, SEEK_END);
@@ -65,12 +66,12 @@ int main(int argc, char** argv)
 		}
 
 		// 2. Parse markdown to html
-		https://medium.com/@krisgbaker/using-cmark-gfm-extensions-aad759894a89
+		// https://medium.com/@krisgbaker/using-cmark-gfm-extensions-aad759894a89
 		cmark_gfm_core_extensions_ensure_registered();
 		cmark_parser* parser = cmark_parser_new(0);
 		cmark_syntax_extension* se = cmark_find_syntax_extension("table");
 
-		cmark_llist* list;
+		cmark_llist* list = NULL;
 
 		cmark_llist_append(cmark_get_default_mem_allocator(), list, se);
 
@@ -98,7 +99,7 @@ int main(int argc, char** argv)
 
 		snprintf(html, htmlSize, "%s\n%s", styles, rawHtml);
 
-		printf("%s", html);
+		//printf("\n\nhtml:\n%s", html);
 
 		if (styles)
 		{
@@ -124,11 +125,17 @@ int main(int argc, char** argv)
 
 	printf("evaluate scripts\n");
 	char* highlightingLib = loadContentFromDisk("prism.min.js");
+	// printf("highlightingLib:\n%s", highlightingLib);
 	// char* highlightingLibJavascript = loadScriptContent("javascript.min.js");
+	webview_error_t evalError = webview_eval(w, highlightingLib);
+	if (evalError == WEBVIEW_ERROR_OK) {
+		printf("eval ok");
+	} else {
+		printf("eval error: %d", evalError);
+	}
 
-	webview_eval(w, highlightingLib);
 	// webview_eval(w, highlightingLibJavascript);
-	webview_eval(w, "hljs.highlightAll()");
+	// webview_eval(w, "hljs.highlightAll()");
 	// webview_eval(w, "alert(1)");
 	
 	webview_run(w);
