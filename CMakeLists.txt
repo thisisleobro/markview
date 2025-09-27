@@ -16,6 +16,10 @@ target_sources(${PROJECT_NAME}
         src/file.c
 )
 
+add_compile_definitions(CMARK_SHARED=OFF)
+add_compile_definitions(CMARK_STATIC=ON)
+add_compile_definitions(CMARK_TESTS=OFF)
+
 if(WIN32)
     target_sources(${PROJECT_NAME} PRIVATE src/WinMain.c)
 endif()
@@ -30,7 +34,7 @@ include_directories(${PROJECT_NAME} vendor/cmark-gfm/extensions)
 include_directories(${PROJECT_NAME} build/vendor/cmark-gfm/src)
 include_directories(${PROJECT_NAME} build/vendor/cmark-gfm/extensions)
 # target_link_libraries(${PROJECT_NAME} PRIVATE cmark)
-target_link_libraries(${PROJECT_NAME} PRIVATE libcmark-gfm libcmark-gfm-extensions)
+target_link_libraries(${PROJECT_NAME} PRIVATE libcmark-gfm-extensions_static libcmark-gfm_static)
 
 # webview stuff
 add_subdirectory(vendor/webview)
