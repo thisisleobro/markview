@@ -1,4 +1,4 @@
-#include "markview/markdown.h"
+#include <markview/markdown.h>
 #include <webview/errors.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,7 +7,6 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-// #include <cmark.h>
 #include <cmark-gfm.h>
 #include <cmark_ctype.h>
 #include <cmark-gfm_version.h>
@@ -16,6 +15,7 @@
 #include <cmark-gfm-core-extensions.h>
 #include <string.h>
 #include <markview/file.h>
+#include <README_md.h>
 
 #define PROGRAM_NAME "markview"
 #define TITLE_MAX_SIZE 256
@@ -65,6 +65,8 @@ int main(int argc, char** argv) {
 		}
 
 		snprintf(windowTitle, TITLE_MAX_SIZE - 1, "%s -  %s", PROGRAM_NAME, filename);
+	} else {
+		html = markdown_to_html((char*)README_md_data, README_md_size, CMARK_OPT_DEFAULT | CMARK_OPT_FOOTNOTES);
 	}
 
 	// printf("html: %s\n", html);

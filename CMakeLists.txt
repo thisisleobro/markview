@@ -26,6 +26,13 @@ endif()
 
 include_directories(${PROJECT_NAME} include)
 
+# embed stuff
+include(cmake/FileEmbed.cmake)
+
+FileEmbedSetup()
+FileEmbedAdd(README.md)
+target_link_libraries(${PROJECT_NAME} PRIVATE file_embed)
+
 # cmark stuff
 # add_subdirectory(vendor/cmark)
 add_subdirectory(vendor/cmark-gfm)
