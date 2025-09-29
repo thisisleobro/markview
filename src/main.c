@@ -16,6 +16,8 @@
 #include <string.h>
 #include <markview/file.h>
 #include <README_md.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
 #define PROGRAM_NAME "markview"
 #define TITLE_MAX_SIZE 256

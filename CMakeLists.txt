@@ -20,6 +20,8 @@ add_compile_definitions(-DCMARK_SHARED=OFF)
 add_compile_definitions(-DCMARK_STATIC=ON)
 add_compile_definitions(-DCMARK_GFM_STATIC_DEFINE=1)
 add_compile_definitions(-DCMARK_TESTS=OFF)
+set(SDL_SHARED OFF)
+set(SDL_STATIC ON)
 
 if(WIN32)
     target_sources(${PROJECT_NAME} PRIVATE src/WinMain.c)
@@ -47,3 +49,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE libcmark-gfm-extensions_static lib
 # webview stuff
 add_subdirectory(vendor/webview)
 target_link_libraries(${PROJECT_NAME} PRIVATE webview::core_static)
+# SDL stuff
+add_subdirectory(vendor/SDL)
+target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
