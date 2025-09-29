@@ -16,10 +16,10 @@ target_sources(${PROJECT_NAME}
         src/file.c
 )
 
-add_compile_definitions(-DCMARK_SHARED=OFF)
-add_compile_definitions(-DCMARK_STATIC=ON)
-add_compile_definitions(-DCMARK_GFM_STATIC_DEFINE=1)
-add_compile_definitions(-DCMARK_TESTS=OFF)
+set(CMARK_SHARED OFF)
+set(CMARK_STATIC ON)
+set(CMARK_GFM_STATIC_DEFINE 1)
+set(CMARK_TESTS OFF)
 set(SDL_SHARED OFF)
 set(SDL_STATIC ON)
 
@@ -31,13 +31,11 @@ include_directories(${PROJECT_NAME} include)
 
 # embed stuff
 include(cmake/FileEmbed.cmake)
-
 FileEmbedSetup()
 FileEmbedAdd(README.md)
 target_link_libraries(${PROJECT_NAME} PRIVATE file_embed)
 
 # cmark stuff
-# add_subdirectory(vendor/cmark)
 add_subdirectory(vendor/cmark-gfm)
 include_directories(${PROJECT_NAME} vendor/cmark-gfm/src)
 include_directories(${PROJECT_NAME} vendor/cmark-gfm/extensions)
@@ -49,6 +47,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE libcmark-gfm-extensions_static lib
 # webview stuff
 add_subdirectory(vendor/webview)
 target_link_libraries(${PROJECT_NAME} PRIVATE webview::core_static)
+
 # SDL stuff
 add_subdirectory(vendor/SDL)
 target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
