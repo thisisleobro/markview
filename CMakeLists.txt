@@ -16,9 +16,10 @@ target_sources(${PROJECT_NAME}
         src/file.c
 )
 
-add_compile_definitions(CMARK_SHARED=OFF)
-add_compile_definitions(CMARK_STATIC=ON)
-add_compile_definitions(CMARK_TESTS=OFF)
+add_compile_definitions(-DCMARK_SHARED=OFF)
+add_compile_definitions(-DCMARK_STATIC=ON)
+add_compile_definitions(-DCMARK_GFM_STATIC_DEFINE=1)
+add_compile_definitions(-DCMARK_TESTS=OFF)
 
 if(WIN32)
     target_sources(${PROJECT_NAME} PRIVATE src/WinMain.c)
