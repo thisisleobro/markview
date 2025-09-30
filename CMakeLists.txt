@@ -5,9 +5,7 @@ project(markview CXX C)
 # add_executable(${PROJECT_NAME} WIN32)
 add_executable(${PROJECT_NAME})
 
-# if (RELEASE)
-# 	set(CMAKE_WIN32_EXECUTABLE ON)
-# endif()
+set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
 
 target_sources(${PROJECT_NAME}
     PRIVATE
