@@ -10,7 +10,6 @@ function(FileEmbedSetup)
 
     add_library(file_embed ${CMAKE_BINARY_DIR}/file_embed/file_embed_empty.c)
     target_include_directories(file_embed PUBLIC ${CMAKE_BINARY_DIR}/file_embed)
-
 endfunction()
 
 function(FileEmbedAdd file)
@@ -37,18 +36,8 @@ function(FileEmbedGenerate file generated_c)
 
     # Separate into individual bytes.
     string(REGEX MATCHALL "([A-Fa-f0-9][A-Fa-f0-9])" SEPARATED_HEX ${content})
-
-    set(output_c "")
-
-    set(counter 0)
-    foreach (hex IN LISTS SEPARATED_HEX)
-        string(APPEND output_c "0x${hex},")
-        MATH(EXPR counter "${counter}+1")
-        if (counter GREATER 16)
-            string(APPEND output_c "\n    ")
-            set(counter 0)
-        endif ()
-    endforeach ()
+    list(TRANSFORM SEPARATED_HEX REPLACE "([A-Fa-f0-9][A-Fa-f0-9])" "0x\\1")
+    list(JOIN SEPARATED_HEX ", " output_c)
 
     set(output_c "
 #include \"${c_name}.h\"
@@ -67,9 +56,8 @@ extern unsigned ${c_name}_size\;
 #endif // ${c_name}_H
     ")
 
-
     if (NOT EXISTS ${CMAKE_BINARY_DIR}/file_embed)
-        file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}file_embed)
+        file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/file_embed)
     endif ()
 
 
