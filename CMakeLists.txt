@@ -50,3 +50,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE webview::core_static)
 # SDL stuff
 add_subdirectory(vendor/SDL)
 target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
+
+# cJSON stuff
+add_subdirectory(vendor/cJSON)
+target_link_libraries(${PROJECT_NAME} PRIVATE cjson)
