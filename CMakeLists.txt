@@ -20,6 +20,19 @@ set(CMARK_GFM_STATIC_DEFINE 1)
 set(CMARK_TESTS OFF)
 set(SDL_SHARED OFF)
 set(SDL_STATIC ON)
+set(SDL_AUDIO OFF)
+# SDL_VIDEO is needed to create a window
+set(SDL_VIDEO ON)
+set(SDL_GPU OFF)
+set(SDL_RENDER OFF)
+set(SDL_CAMERA OFF)
+set(SDL_JOYSTICK OFF)
+set(SDL_HAPTIC OFF)
+set(SDL_HIDAPI OFF)
+set(SDL_POWER OFF)
+set(SDL_SENSOR OFF)
+set(SDL_DIALOG OFF)
+
 
 if(WIN32)
     target_sources(${PROJECT_NAME} PRIVATE src/WinMain.c)
@@ -32,6 +45,7 @@ include(cmake/FileEmbed.cmake)
 FileEmbedSetup()
 FileEmbedAdd(assets/sample.md)
 FileEmbedAdd(assets/prism.min.js)
+FileEmbedAdd(assets/prism.css)
 target_link_libraries(${PROJECT_NAME} PRIVATE file_embed)
 
 # cmark stuff

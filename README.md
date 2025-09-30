@@ -1,6 +1,6 @@
 ### Build
 From build folder
-```bat
+```batch
 :: Release
 cmake -S .. -B . -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Release
 :: Debug
