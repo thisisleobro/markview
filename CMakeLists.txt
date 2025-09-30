@@ -30,15 +30,16 @@ include_directories(${PROJECT_NAME} include)
 # embed stuff
 include(cmake/FileEmbed.cmake)
 FileEmbedSetup()
-FileEmbedAdd(README.md)
+FileEmbedAdd(assets/sample.md)
+FileEmbedAdd(assets/prism.min.js)
 target_link_libraries(${PROJECT_NAME} PRIVATE file_embed)
 
 # cmark stuff
 add_subdirectory(vendor/cmark-gfm)
 include_directories(${PROJECT_NAME} vendor/cmark-gfm/src)
 include_directories(${PROJECT_NAME} vendor/cmark-gfm/extensions)
-include_directories(${PROJECT_NAME} build/vendor/cmark-gfm/src)
-include_directories(${PROJECT_NAME} build/vendor/cmark-gfm/extensions)
+include_directories(${PROJECT_NAME} ${CMAKE_BINARY_DIR}/vendor/cmark-gfm/src)
+include_directories(${PROJECT_NAME} ${CMAKE_BINARY_DIR}/vendor/cmark-gfm/extensions)
 # target_link_libraries(${PROJECT_NAME} PRIVATE cmark)
 target_link_libraries(${PROJECT_NAME} PRIVATE libcmark-gfm-extensions_static libcmark-gfm_static)
 
