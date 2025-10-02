@@ -1,6 +1,8 @@
 // #include "SDL3/SDL_init.h"
 // #include "SDL3/SDL_oldnames.h"
 // #include "SDL3/SDL_properties.h"
+// #include "SDL3/SDL_stdinc.h"
+#include "WebView2.h"
 #include <markview/markdown.h>
 #include <webview/errors.h>
 #include <stdio.h>
@@ -34,38 +36,33 @@
 
 
 int main(int argc, char** argv) {
-	printf("starting %s\n", PROGRAM_NAME);
-	char windowTitle[TITLE_MAX_SIZE];
+	// SDL_Log("starting %s\n", PROGRAM_NAME);
+	char windowTitle[TITLE_MAX_SIZE] = {};
+
+	snprintf(windowTitle,
+		TITLE_MAX_SIZE - 1, "%s -  %s",
+		PROGRAM_NAME,
+		argc > 1? argv[1] :"Welcome"
+	);
 
 	char* filename = argv[1];
 
 	char* html = NULL;
-	// // Initialize SDL
-	// if (!SDL_Init(SDL_INIT_EVENTS)) {
-	//     printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
-	//     return -1;
-	// }
 
-	// // Create a window
-	// SDL_Window* window = SDL_CreateWindow(
-	//     windowTitle,                // Window title
-	//     800, 600,                         // Window width and height
-	//     SDL_WINDOW_RESIZABLE              // Flags
-	// );
+	// Initialize SDL
+	if (!SDL_Init(SDL_INIT_EVENTS)) {
+		// SDL_Log("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+		return -1;
+	}
 
-	// if (window == NULL) {
-	//     printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
-	//     SDL_Quit();
-	//     return -1;
-	// }
+	// Create a window
+	SDL_Window* window = SDL_CreateWindow(windowTitle, 800, 600, SDL_WINDOW_RESIZABLE);
 
-	// SDL_PropertiesID properties = SDL_GetWindowProperties(window);
-	// HWND hwnd = (HWND)SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
-	// if (hwnd) {
-	//     printf("Window HANDLE (HWND): %p\n", hwnd);
-	// } else {
-	//     printf("HWND property not found.\n");
-	// }
+	if (window == NULL) {
+		// SDL_Log("Window could not be created! SDL_Error: %s\n", SDL_GetError());
+		SDL_Quit();
+		return -1;
+	}
 
 	size_t styleSize = strlen(STYLE_TAG_FORMAT) + prism_css_size + 1;
 	char* styles = malloc(styleSize);
@@ -80,7 +77,7 @@ int main(int argc, char** argv) {
 		// 1. Load the markdow file
 		char* markdown = markview_read_file(filename);
 		if (!markdown) {
-			printf("error reading markdown");
+			printf("error reading markdown\n");
 			return 1;
 		}
 
@@ -105,8 +102,6 @@ int main(int argc, char** argv) {
 		if (markdown) {
 			free(markdown);
 		}
-
-		snprintf(windowTitle, TITLE_MAX_SIZE - 1, "%s -  %s", PROGRAM_NAME, filename);
 	} else {
 		printf("No file provided. Showing welcome file\n");
 		char* rawHtml = markdown_to_html((char*)sample_md_data, sample_md_size, CMARK_OPTIONS);
@@ -117,22 +112,46 @@ int main(int argc, char** argv) {
 
 		snprintf(html, htmlSize, "%s\n%s", styles, rawHtml);
 
-		// printf("html: %s", html);
-
-		snprintf(windowTitle, TITLE_MAX_SIZE - 1, "%s -  %s", PROGRAM_NAME, "Welcome");
-
 		if (rawHtml) {
 			free(rawHtml);
 		}
 	}
 
-	// printf("html: %s\n", html);
+	SDL_PropertiesID properties = SDL_GetWindowProperties(window);
+	HWND hwnd = (HWND)SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+	if (hwnd) {
+		SDL_Log("Window HANDLE (HWND): %p\n", hwnd);
+	} else {
+		SDL_Log("HWND property not found.\n");
+	}
 
-	// 3. webview_set_html(w, the_html);
-	// webview_t w = webview_create(1, hwnd);
-	webview_t w = webview_create(1, NULL);
-	webview_set_title(w, windowTitle);
-	webview_set_html(w, html);
+	webview_t w = webview_create(1, hwnd);
+
+	// webview
+	if (NULL == w) {
+		SDL_Log("Error creating webview\n");
+	} else {
+		// https://github.com/webview/webview/issues/1195#issuecomment-2380564512
+		// resize widget
+		HWND widget_handle = (HWND)webview_get_native_handle(w, WEBVIEW_NATIVE_HANDLE_KIND_UI_WIDGET);
+		if (widget_handle) {
+			RECT r = {};
+			if (GetClientRect(GetParent(widget_handle), &r)) {
+				MoveWindow(widget_handle, r.left, r.top, r.right - r.left, r.bottom - r.top, TRUE);
+			}
+		}
+
+		// focus webview
+		ICoreWebView2Controller* controller_ptr =
+			(ICoreWebView2Controller *)webview_get_native_handle(w, WEBVIEW_NATIVE_HANDLE_KIND_BROWSER_CONTROLLER);
+		
+		if (controller_ptr) {
+			controller_ptr->lpVtbl->MoveFocus(controller_ptr, COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+		}
+
+		webview_set_title(w, "windowTitle");
+		webview_set_html(w, html);
+	}
 
 	printf("Evaluate scripts\n");
 	webview_error_t evalError = webview_eval(w, (char*)prism_min_js_data);
@@ -142,26 +161,19 @@ int main(int argc, char** argv) {
 		printf("Error: evaluating prism: %d", evalError);
 	}
 
-	// int running = 1;
-	// SDL_Event event;
+	int running = 1;
+	SDL_Event event;
 
-	// while (running) {
-	//     // Handle events
-	//     while (SDL_PollEvent(&event)) {
-	//         if (event.type == SDL_EVENT_QUIT) {
-	//             running = 0;
-	//         }
-	//     }
-
-	//     // Clear the window (optional, fill with a color)
-	//     // SDL_SetRenderDrawColor(SDL_GetRenderer(window), 0, 0, 0, 255);  // Black
-	//     // SDL_RenderClear(SDL_GetRenderer(window));
-
-	//     // Present the renderer (display the window)
-	//     // SDL_RenderPresent(SDL_GetRenderer(window));
-	// }
+	while (running) {
+		// Handle events
+		while (SDL_PollEvent(&event)) {
+			if (event.type == SDL_EVENT_QUIT) {
+				running = 0;
+			}
+		}
+	}
 	
-	webview_run(w);
+	// webview_run(w);
 	webview_destroy(w);
 
 	if (html)
