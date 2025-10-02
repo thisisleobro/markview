@@ -1,8 +1,7 @@
-// #include "SDL3/SDL_init.h"
-// #include "SDL3/SDL_oldnames.h"
-// #include "SDL3/SDL_properties.h"
-// #include "SDL3/SDL_stdinc.h"
-#include "WebView2.h"
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_log.h>
+#include <SDL3/SDL_video.h>
+#include <WebView2.h>
 #include <markview/markdown.h>
 #include <webview/errors.h>
 #include <stdio.h>
@@ -33,6 +32,26 @@
 #define STYLE_TAG_FORMAT "<style>%s</style>"
 
 #define CMARK_OPTIONS CMARK_OPT_DEFAULT | CMARK_OPT_FOOTNOTES | CMARK_OPT_LIBERAL_HTML_TAG
+
+
+void resize_window(webview_t webview) {
+	HWND widget_handle = (HWND)webview_get_native_handle(webview, WEBVIEW_NATIVE_HANDLE_KIND_UI_WIDGET);
+	if (widget_handle) {
+		RECT r = {};
+		if (GetClientRect(GetParent(widget_handle), &r)) {
+			MoveWindow(widget_handle, r.left, r.top, r.right - r.left, r.bottom - r.top, TRUE);
+		}
+	}
+}
+
+void focus_webview(webview_t webview) {
+	ICoreWebView2Controller* controller_ptr =
+		(ICoreWebView2Controller *)webview_get_native_handle(webview, WEBVIEW_NATIVE_HANDLE_KIND_BROWSER_CONTROLLER);
+	
+	if (controller_ptr) {
+		controller_ptr->lpVtbl->MoveFocus(controller_ptr, COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+	}
+}
 
 
 int main(int argc, char** argv) {
@@ -133,21 +152,8 @@ int main(int argc, char** argv) {
 	} else {
 		// https://github.com/webview/webview/issues/1195#issuecomment-2380564512
 		// resize widget
-		HWND widget_handle = (HWND)webview_get_native_handle(w, WEBVIEW_NATIVE_HANDLE_KIND_UI_WIDGET);
-		if (widget_handle) {
-			RECT r = {};
-			if (GetClientRect(GetParent(widget_handle), &r)) {
-				MoveWindow(widget_handle, r.left, r.top, r.right - r.left, r.bottom - r.top, TRUE);
-			}
-		}
-
-		// focus webview
-		ICoreWebView2Controller* controller_ptr =
-			(ICoreWebView2Controller *)webview_get_native_handle(w, WEBVIEW_NATIVE_HANDLE_KIND_BROWSER_CONTROLLER);
-		
-		if (controller_ptr) {
-			controller_ptr->lpVtbl->MoveFocus(controller_ptr, COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
-		}
+		resize_window(w);
+		focus_webview(w);
 
 		webview_set_title(w, "windowTitle");
 		webview_set_html(w, html);
@@ -156,9 +162,9 @@ int main(int argc, char** argv) {
 	printf("Evaluate scripts\n");
 	webview_error_t evalError = webview_eval(w, (char*)prism_min_js_data);
 	if (evalError == WEBVIEW_ERROR_OK) {
-		printf("Prism executed sucesfully");
+		printf("Prism executed sucesfully\n");
 	} else {
-		printf("Error: evaluating prism: %d", evalError);
+		printf("Error: evaluating prism: %d\n", evalError);
 	}
 
 	int running = 1;
@@ -167,8 +173,18 @@ int main(int argc, char** argv) {
 	while (running) {
 		// Handle events
 		while (SDL_PollEvent(&event)) {
+			SDL_Log("event: %d", event.type);
 			if (event.type == SDL_EVENT_QUIT) {
+				// SDL_Log("Quit, please!");
 				running = 0;
+				continue;
+			}
+
+			if (event.type == SDL_EVENT_WINDOW_RESIZED)
+			{
+				// SDL_Log("windows resized");
+				resize_window(w);
+				continue;
 			}
 		}
 	}
