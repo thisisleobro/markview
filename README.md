@@ -1,10 +1,11 @@
 ### Build
-From build folder
 ```batch
-:: Release
-cmake -S .. -B . -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Release
-:: Debug
+::from build folder call
 cmake -S .. -B . -G "MinGW Makefiles" -D CMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-make && simple-markdown.exe
+:: for release
+cmake -S .. -B . -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Release
+
+:: and then
+make && markview.exe ..\README.md
 ```
