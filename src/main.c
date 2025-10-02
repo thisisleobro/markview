@@ -1,3 +1,4 @@
+#include <SDL3/SDL_scancode.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_log.h>
 #include <SDL3/SDL_video.h>
@@ -169,6 +170,7 @@ int main(int argc, char** argv) {
 
 	int running = 1;
 	SDL_Event event;
+	bool fullscreen;
 
 	while (running) {
 		// Handle events
@@ -185,6 +187,14 @@ int main(int argc, char** argv) {
 				// SDL_Log("windows resized");
 				resize_window(w);
 				continue;
+			}
+
+			if (event.type == SDL_EVENT_KEY_DOWN)
+			{
+				if (event.key.scancode == SDL_SCANCODE_F11)
+				{
+					SDL_SetWindowFullscreen(window, (fullscreen =! fullscreen));
+				}
 			}
 		}
 	}
