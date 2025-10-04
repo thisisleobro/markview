@@ -8,12 +8,15 @@ add_executable(${PROJECT_NAME})
 # set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
 
 target_sources(${PROJECT_NAME}
-    PRIVATE
-        src/main.c
-        src/markdown.c
-        src/file.c
+	PRIVATE
+		src/main.c
+		src/markdown.c
+		src/filesystem.c
+		src/scripting.c
+		src/constants.c
 )
 
+set(BUILD_SHARED_LIBS OFF)
 set(CMARK_SHARED OFF)
 set(CMARK_STATIC ON)
 set(CMARK_GFM_STATIC_DEFINE 1)
@@ -35,7 +38,7 @@ set(SDL_DIALOG OFF)
 
 
 if(WIN32)
-    target_sources(${PROJECT_NAME} PRIVATE src/WinMain.c)
+	target_sources(${PROJECT_NAME} PRIVATE src/WinMain.c)
 endif()
 
 include_directories(${PROJECT_NAME} include)
@@ -68,3 +71,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
 # cJSON stuff
 add_subdirectory(vendor/cJSON)
 target_link_libraries(${PROJECT_NAME} PRIVATE cjson)
+include_directories(${PROJECT_NAME} vendor/cJSON)
