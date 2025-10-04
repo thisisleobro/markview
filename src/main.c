@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
 
 		// 2. Parse markdown to html
 		// char* rawHtml = cmark_markdown_to_html(markdown, strlen(markdown), CMARK_OPT_SMART);
-		char* rawHtml = markdown_to_html(markdown, strlen(markdown), CMARK_OPTIONS);
+		char* rawHtml = markview_markdown_to_html(markdown, strlen(markdown), CMARK_OPTIONS);
 
 		size_t htmlSize = strlen(rawHtml) + strlen(styles) + 1;
 
@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
 		}
 	} else {
 		printf("No file provided. Showing welcome file\n");
-		char* rawHtml = markdown_to_html((char*)sample_md_data, sample_md_size, CMARK_OPTIONS);
+		char* rawHtml = markview_markdown_to_html((char*)sample_md_data, sample_md_size, CMARK_OPTIONS);
 
 		size_t htmlSize = strlen(rawHtml) + strlen(styles) + 1;
 

@@ -5,6 +5,6 @@
 
 void register_extension_by_name(cmark_parser* parser, cmark_llist* list, char* name);
 
-char* markdown_to_html(char* markdown, size_t lenght, int cmark_option);
+char* markview_markdown_to_html(char* markdown, size_t lenght, int cmark_option);
 
 #endif // MARKVIEW_MARKDOWN_H
