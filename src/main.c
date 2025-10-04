@@ -1,3 +1,4 @@
+#include <SDL3/SDL_render.h>
 #include <SDL3/SDL_scancode.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_log.h>
@@ -76,12 +77,18 @@ int main(int argc, char** argv) {
 	}
 
 	// Create a window
-	SDL_Window* window = SDL_CreateWindow(windowTitle, 800, 600, SDL_WINDOW_RESIZABLE);
+	SDL_Window* window = NULL;
+	SDL_Renderer* renderer = NULL;
 
-	if (window == NULL) {
-		// SDL_Log("Window could not be created! SDL_Error: %s\n", SDL_GetError());
+	if (!SDL_CreateWindowAndRenderer(windowTitle, windowWidth, windowHeight, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
+		SDL_Log("Window or renderer could not be created! SDL_Error: %s\n", SDL_GetError());
 		SDL_Quit();
 		return -1;
+	}
+
+	// Paint screen according to theme.
+	if (!SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255) || !SDL_RenderClear(renderer) || !SDL_RenderPresent(renderer)) {
+		SDL_Log("Could not clear window! SDL_Error: %s\n", SDL_GetError());
 	}
 
 	size_t styleSize = strlen(STYLE_TAG_FORMAT) + prism_css_size + 1;
@@ -204,6 +211,9 @@ int main(int argc, char** argv) {
 
 	if (html)
 	{
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);
+	SDL_Quit();
 		free(html);
 	}
 

@@ -24,7 +24,7 @@ set(SDL_AUDIO OFF)
 # SDL_VIDEO is needed to create a window
 set(SDL_VIDEO ON)
 set(SDL_GPU OFF)
-set(SDL_RENDER OFF)
+set(SDL_RENDER ON)
 set(SDL_CAMERA OFF)
 set(SDL_JOYSTICK OFF)
 set(SDL_HAPTIC OFF)
