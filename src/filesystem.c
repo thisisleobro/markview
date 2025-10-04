@@ -1,8 +1,48 @@
+#include <windows.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 
 
+// #include <dirent.h>
+// #include <stdbool.h>
+// int markview_folder_exists_linux_impl(const char* folderpath) {
+//     DIR *dir = opendir(folderpath);
+//     if (dir) {
+//         closedir(dir);
+//         return true;
+//     }
+//     return false;
+// }
+
+
+// TODO: make cross platform
+bool markview_folder_exists(const char* folderpath) {
+	DWORD dwAttrib = GetFileAttributesA(folderpath);
+
+    if (dwAttrib == INVALID_FILE_ATTRIBUTES) {
+        return false;
+    }
+
+    if (dwAttrib & FILE_ATTRIBUTE_DIRECTORY) {
+        return true;
+    }
+
+    return false;
+}
+
+bool markview_file_exists(const char* filepath) {
+	FILE *file = fopen(filepath, "r");
+	if (file) {
+		fclose(file);
+		return true;
+	}
+
+	return false;
+}
+
 char* markview_read_file(const char* filename) {
+	// fopen_s(FILE **Stream, const char *FileName, const char *Mode)
 	FILE* file = fopen(filename, "r");
 	if (!file) {
 		perror("Failed to open file");
@@ -21,7 +61,7 @@ char* markview_read_file(const char* filename) {
 		fclose(file);
 		return NULL;
 	}
-	
+
 	rewind(file);
 
 	if (size == 0) {
@@ -29,7 +69,7 @@ char* markview_read_file(const char* filename) {
 		return "";
 	}
 
-	size_t buffer_size = 1024;  
+	size_t buffer_size = 1024;
 	char* content = malloc(buffer_size);
 	if (!content) {
 		perror("Failed to allocate memory");
