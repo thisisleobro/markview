@@ -63,17 +63,21 @@ int main(int argc, char** argv) {
 	char windowTitle[TITLE_MAX_SIZE] = {};
 	char* html = NULL;
 	char* filename = argv[1];
-	size_t windowWidth, windowHeight;
+	int windowWidth = 900, windowHeight = 600;
+	SDL_WindowFlags windowFlags = SDL_WINDOW_RESIZABLE;
+	cJSON* configurationJson = NULL;
+	cJSON* width = NULL;
+	cJSON* height = NULL;
+	cJSON* borderless = NULL;
 
 	snprintf(windowTitle, TITLE_MAX_SIZE - 1, "%s -  %s", MARKVIEW_PROGRAM_NAME, argc > 1? filename :"Welcome");
-
 
 	char* configurationFilePath = markview_configuration_file_path();
 	SDL_Log("Reading configuration file at %s", configurationFilePath);
 
 	if (markview_file_exists(configurationFilePath)) {
-		char* configurationContent = markview_read_file(configurationFilePath);
-		cJSON* configurationJson = cJSON_Parse(configurationContent);
+		char* configurationContent = markview_file_read(configurationFilePath);
+		configurationJson = cJSON_Parse(configurationContent);
 		const char* error_ptr =  NULL;
 
 		if (NULL == configurationJson)
@@ -85,38 +89,29 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		cJSON* width = cJSON_GetObjectItemCaseSensitive(configurationJson, "width");
-		cJSON* height = cJSON_GetObjectItemCaseSensitive(configurationJson, "height");
+		width = cJSON_GetObjectItemCaseSensitive(configurationJson, "width");
+		height = cJSON_GetObjectItemCaseSensitive(configurationJson, "height");
+		borderless = cJSON_GetObjectItemCaseSensitive(configurationJson, "borderless");
 
-		if (!cJSON_IsNumber(width)) {
-			error_ptr = cJSON_GetErrorPtr();
-			if (error_ptr != NULL)
-			{
-				SDL_Log("Error before: %s\n", error_ptr);
-			}
-
-			windowWidth = 800;
-		} else {
+		if (cJSON_IsNumber(width)) {
 			windowWidth = width->valueint;
 		}
 
-		if (!cJSON_IsNumber(height)) {
-			error_ptr = cJSON_GetErrorPtr();
-			if (error_ptr != NULL)
-			{
-				SDL_Log("Error before: %s\n", error_ptr);
-			}
-			windowHeight = 600;
-		} else {
+		if (cJSON_IsNumber(height)) {
 			windowHeight = height->valueint;
 		}
 
-		cJSON_Delete(configurationJson);
+		if (cJSON_IsTrue(borderless)) {
+			windowFlags = windowFlags | SDL_WINDOW_BORDERLESS;
+		}
 
 		if (configurationContent) {
 			free(configurationContent);
 		}
+
+		cJSON_Delete(configurationJson);
 	}
+
 	SDL_Log("Finished reading configuration file");
 
 	// Initialize SDL
@@ -130,7 +125,7 @@ int main(int argc, char** argv) {
 	SDL_Window* window = NULL;
 	SDL_Renderer* renderer = NULL;
 
-	if (!SDL_CreateWindowAndRenderer(windowTitle, windowWidth, windowHeight, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
+	if (!SDL_CreateWindowAndRenderer(windowTitle, windowWidth, windowHeight, windowFlags, &window, &renderer)) {
 		SDL_Log("Window or renderer could not be created! SDL_Error: %s\n", SDL_GetError());
 		SDL_Quit();
 		return -1;
@@ -212,8 +207,7 @@ int main(int argc, char** argv) {
 	}
 
 	printf("Evaluate scripts\n");
-	if (!markview_run_script(w, (char*)prism_min_js_data))
-	{
+	if (!markview_run_script(w, (char*)prism_min_js_data)) {
 		printf("Error: evaluating prism.js\n");
 	}
 
@@ -250,15 +244,49 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	webview_destroy(w);
+	// save configuration
+	char* configurationFolderPath = markview_configuration_folder_path();
+	if (markview_folder_create(configurationFolderPath)) {
+		SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 
+		configurationJson = cJSON_CreateObject();
+		width = cJSON_CreateNumber(windowWidth);
+		height = cJSON_CreateNumber(windowHeight);
+		borderless = cJSON_CreateBool(windowFlags & SDL_WINDOW_BORDERLESS);
+		cJSON_AddItemToObject(configurationJson, "width", width);
+		cJSON_AddItemToObject(configurationJson, "height", height);
+		cJSON_AddItemToObject(configurationJson, "borderless", borderless);
+
+		char* jsonString = cJSON_Print(configurationJson);
+
+		SDL_Log("saving configuration\n");
+		SDL_Log("%s", jsonString);
+
+		markview_file_write(configurationFilePath, jsonString);
+
+		if (jsonString)
+		{
+			free(jsonString);
+		}
+
+		if (configurationFolderPath) {
+			free(configurationFolderPath);
+		}
+		if (configurationFilePath) {
+			free(configurationFilePath);
+		}
+		
+		cJSON_Delete(configurationJson);
+	}
+
+	// deallocate stuff
+	webview_destroy(w);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
-
 	if (html) {
 		free(html);
-	}
+	}	
 
 	return 0;
 }

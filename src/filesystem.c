@@ -20,15 +20,23 @@
 bool markview_folder_exists(const char* folderpath) {
 	DWORD dwAttrib = GetFileAttributesA(folderpath);
 
-    if (dwAttrib == INVALID_FILE_ATTRIBUTES) {
-        return false;
-    }
+	if (dwAttrib == INVALID_FILE_ATTRIBUTES) {
+		return false;
+	}
 
-    if (dwAttrib & FILE_ATTRIBUTE_DIRECTORY) {
-        return true;
-    }
+	if (dwAttrib & FILE_ATTRIBUTE_DIRECTORY) {
+		return true;
+	}
 
-    return false;
+	return false;
+}
+
+bool markview_folder_create(const char* folderpath) {
+	if (CreateDirectory(folderpath, NULL) == 0 && GetLastError() != ERROR_ALREADY_EXISTS) {
+		return false;
+	}
+
+	return true;
 }
 
 bool markview_file_exists(const char* filepath) {
@@ -106,4 +114,19 @@ char* markview_file_read(const char* filename) {
 	content[total_read] = '\0';
 	fclose(file);
 	return content;
+}
+
+bool markview_file_write(const char* filepath, char* content) {
+	FILE* file = fopen(filepath, "w");
+
+	if (NULL == file) {
+		return false;
+	}
+
+	// TODO: check if write is succesfully
+	fprintf(file, "%s", content);
+
+	fclose(file);
+
+	return true;
 }
