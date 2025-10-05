@@ -50,6 +50,8 @@ FileEmbedAdd(assets/sample.md)
 FileEmbedAdd(assets/prism.min.js)
 FileEmbedAdd(assets/prism.css)
 target_link_libraries(${PROJECT_NAME} PRIVATE file_embed)
+# https://stackoverflow.com/questions/61553637/which-lib-do-i-have-to-link-for-wdupenv-s
+target_link_libraries(${PROJECT_NAME} PRIVATE msvcr120)
 
 # cmark stuff
 add_subdirectory(vendor/cmark-gfm)
