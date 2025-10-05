@@ -7,14 +7,22 @@ add_executable(${PROJECT_NAME})
 
 # set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
 
-target_sources(${PROJECT_NAME}
-	PRIVATE
-		src/main.c
-		src/markdown.c
-		src/filesystem.c
-		src/scripting.c
-		src/constants.c
-)
+file(GLOB_RECURSE SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.c)
+
+target_sources(${PROJECT_NAME} PRIVATE ${SRC_FILES})
+
+if(WIN32)
+	message("Building ${PROJECT_NAME} for windows")
+    add_compile_definitions(MARKVIEW_WINDOWS)
+elseif(APPLE)
+	message("Building ${PROJECT_NAME} for apple")
+    add_compile_definitions(MARKVIEW_APPLE)
+elseif(UNIX AND NOT APPLE)
+	message("Building ${PROJECT_NAME} for linux")
+    add_compile_definitions(MARKVIEW_LINUX)
+else()
+	message(FATAL_ERROR "unknown OS")
+endif()
 
 set(BUILD_SHARED_LIBS OFF)
 set(CMARK_SHARED OFF)
@@ -35,7 +43,6 @@ set(SDL_HIDAPI OFF)
 set(SDL_POWER OFF)
 set(SDL_SENSOR OFF)
 set(SDL_DIALOG OFF)
-
 
 if(WIN32)
 	target_sources(${PROJECT_NAME} PRIVATE src/WinMain.c)

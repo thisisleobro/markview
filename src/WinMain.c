@@ -1,3 +1,6 @@
+#ifdef MARKVIEW_WINDOWS
+
+
 #include <stdio.h>
 #include <windows.h>
 #include <stdlib.h>
@@ -33,3 +36,5 @@ int WINAPI wWinMain(
 
 	return result;
 }
+
+#endif // MARKVIEW_WINDOWS
