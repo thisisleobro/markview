@@ -150,7 +150,7 @@ int main(int argc, char** argv) {
 		printf("reading file: %s\n", filename);
 
 		// 1. Load the markdow file
-		char* markdown = markview_read_file(filename);
+		char* markdown = markview_file_read(filename);
 		if (!markdown) {
 			printf("error reading markdown\n");
 			return 1;

@@ -41,7 +41,7 @@ bool markview_file_exists(const char* filepath) {
 	return false;
 }
 
-char* markview_read_file(const char* filename) {
+char* markview_file_read(const char* filename) {
 	// fopen_s(FILE **Stream, const char *FileName, const char *Mode)
 	FILE* file = fopen(filename, "r");
 	if (!file) {
