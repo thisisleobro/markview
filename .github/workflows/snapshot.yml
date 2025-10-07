@@ -19,12 +19,22 @@ jobs:
         run: mkdir build
       - name: Run cmake
         working-directory: build
-        run: cmake .. -G "MinGW Makefiles"
+        run: cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
       - name: Run make
         working-directory: ./build
         run: make markview
+      - name: Generate time
+        id: get-time
+        shell: powershell
+        run: |
+          $timestamp = Get-Date -Format "yyyy-MM-ddTHHmmss"
+          Write-Output TIME=$timestamp >> $env:GITHUB_OUTPUT
       - name: Create release
-        working-directory: ./build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create ${{ steps.date.outputs.date }} --title=${{ steps.date.outputs.date }} markview.exe
+          TIME: ${{ steps.get-time.outputs.TIME }}
+          TITLE: markview ${{ steps.get-time.outputs.TIME }} snapshot
+        working-directory: ./build
+        shell: powershell
+        run: |
+          gh release create ${{ env.TIME }} --title="${{ env.TITLE }}" markview.exe
