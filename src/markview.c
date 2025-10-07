@@ -315,12 +315,7 @@ int markview_run(markview_t app) {
 		cJSON_Delete(configurationJson);
 	}
 
-	return 0;
-}
-
-void markview_destroy(markview_t app) {
-	markview_detail* markview = app;
-
+	// deallocations
 	webview_destroy(markview->webview);
 
 	SDL_DestroyRenderer(markview->renderer);
@@ -334,4 +329,6 @@ void markview_destroy(markview_t app) {
 	if (markview->html) {
 		free(markview->html);
 	}
+
+	return 0;
 }

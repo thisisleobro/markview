@@ -9,9 +9,5 @@ int main(int argc, char** argv) {
 		return -1;
 	}
 
-	int returnCode = markview_run(app);
-
-	markview_destroy(app);
-
-	return returnCode;
+	return markview_run(app);
 }
