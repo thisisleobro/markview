@@ -89,10 +89,12 @@ markview_t markview_create(char* filename) {
 
 	SDL_WindowFlags windowFlags = DEFAULT_WINDOW_SIZE;
 
-	cJSON *width = NULL;
-	cJSON *height = NULL;
-	cJSON *borderless = NULL;
-	char *configurationFilePath = markview_configuration_file_path();
+	cJSON* width = NULL;
+	cJSON* height = NULL;
+	cJSON* borderless = NULL;
+	cJSON* maximized = NULL;
+
+	char* configurationFilePath = markview_configuration_file_path();
 	SDL_Log("Reading configuration file at %s", configurationFilePath);
 
 	if (markview_file_exists(configurationFilePath)) {
@@ -110,17 +112,22 @@ markview_t markview_create(char* filename) {
 		width = cJSON_GetObjectItemCaseSensitive(configurationJson, "width");
 		height = cJSON_GetObjectItemCaseSensitive(configurationJson, "height");
 		borderless = cJSON_GetObjectItemCaseSensitive(configurationJson, "borderless");
-
-		if (cJSON_IsNumber(width)) {
-			markview->windowWidth = width->valueint;
-		}
-
-		if (cJSON_IsNumber(height)) {
-			markview->windowHeight = height->valueint;
-		}
+		maximized = cJSON_GetObjectItemCaseSensitive(configurationJson, "maximized");
 
 		if (cJSON_IsTrue(borderless)) {
 			windowFlags = windowFlags | SDL_WINDOW_BORDERLESS;
+		}
+
+		if (cJSON_IsTrue(maximized)) {
+			windowFlags = windowFlags | SDL_WINDOW_MAXIMIZED;
+		} else {
+			if (cJSON_IsNumber(width)) {
+				markview->windowWidth = width->valueint;
+			}
+
+			if (cJSON_IsNumber(height)) {
+				markview->windowHeight = height->valueint;
+			}
 		}
 
 		if (configurationContent) {
@@ -277,13 +284,14 @@ int markview_run(markview_t app) {
 		cJSON* width = cJSON_CreateNumber(markview->windowWidth);
 		cJSON* height = cJSON_CreateNumber(markview->windowHeight);
 
-
 		SDL_WindowFlags windowFlags = SDL_GetWindowFlags(markview->window);
 		cJSON* borderless = cJSON_CreateBool(windowFlags & SDL_WINDOW_BORDERLESS);
+		cJSON* maximized = cJSON_CreateBool(windowFlags & SDL_WINDOW_MAXIMIZED);
 
 		cJSON_AddItemToObject(configurationJson, "width", width);
 		cJSON_AddItemToObject(configurationJson, "height", height);
 		cJSON_AddItemToObject(configurationJson, "borderless", borderless);
+		cJSON_AddItemToObject(configurationJson, "maximized", maximized);
 
 		char* jsonString = cJSON_Print(configurationJson);
 
@@ -299,6 +307,7 @@ int markview_run(markview_t app) {
 		if (configurationFolderPath) {
 			free(configurationFolderPath);
 		}
+
 		if (configurationFilePath) {
 			free(configurationFilePath);
 		}
