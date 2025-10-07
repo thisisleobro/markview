@@ -26,7 +26,7 @@
 #include <markview/filesystem.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_system.h>
-#include <sample_md.h>
+#include <welcome_md.h>
 #include <prism_min_js.h>
 #include <prism_css.h>
 #include <windef.h>
@@ -53,6 +53,26 @@ typedef struct {
 	int windowHeight;
 } markview_detail;
 
+bool markview_load_javascript(markview_t app, char* content) {
+	markview_detail* markview = app;
+	webview_error_t evalError = webview_eval(markview->webview, content);
+	if (evalError == WEBVIEW_ERROR_OK) {
+		return true;
+	}
+	return false;
+}
+
+bool markview_load_javascript_from_file(markview_t app, char* filename) {
+	markview_detail* markview = app;
+
+	char* content = markview_file_read(filename);
+	if (NULL == content) {
+		return false;
+	}
+
+	return markview_load_javascript(markview->webview, content);
+}
+
 // TODO: handle cross platform
 void resize_window(webview_t webview) {
 	HWND widget_handle = (HWND)webview_get_native_handle(webview, WEBVIEW_NATIVE_HANDLE_KIND_UI_WIDGET);
@@ -72,7 +92,6 @@ void focus_webview(webview_t webview) {
 		controller_ptr->lpVtbl->MoveFocus(controller_ptr, COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
 	}
 }
-
 
 markview_t markview_create(char* filename) {
 	SDL_Log("starting %s\n", MARKVIEW_PROGRAM_NAME);
@@ -195,7 +214,7 @@ markview_t markview_create(char* filename) {
 		}
 	} else {
 		printf("No file provided. Showing welcome file\n");
-		char *rawHtml = markview_markdown_to_html((char *)sample_md_data, sample_md_size, CMARK_OPTIONS);
+		char *rawHtml = markview_markdown_to_html((char *)welcome_md_data, welcome_md_size, CMARK_OPTIONS);
 
 		size_t htmlSize = strlen(rawHtml) + strlen(styles) + 1;
 
@@ -230,7 +249,7 @@ markview_t markview_create(char* filename) {
 
 	printf("Evaluate scripts\n");
 
-	if (!markview_run_script(markview->webview, (char *)prism_min_js_data)) {
+	if (!markview_load_javascript(markview, (char *)prism_min_js_data)) {
 		printf("Error: evaluating prism.js\n");
 	}
 
@@ -246,7 +265,6 @@ int markview_run(markview_t app) {
 	while (running) {
 		// Handle events
 		while (SDL_PollEvent(&event)) {
-			SDL_Log("event: %d", event.type);
 			if (event.type == SDL_EVENT_QUIT) {
 				SDL_Log("Quit, please!");
 				running = 0;
@@ -332,3 +350,4 @@ int markview_run(markview_t app) {
 
 	return 0;
 }
+

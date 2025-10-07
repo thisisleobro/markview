@@ -53,7 +53,7 @@ include_directories(${PROJECT_NAME} include)
 # embed stuff
 include(cmake/FileEmbed.cmake)
 FileEmbedSetup()
-FileEmbedAdd(assets/sample.md)
+FileEmbedAdd(assets/welcome.md)
 FileEmbedAdd(assets/prism.min.js)
 FileEmbedAdd(assets/prism.css)
 target_link_libraries(${PROJECT_NAME} PRIVATE file_embed)
