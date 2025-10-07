@@ -306,15 +306,23 @@ int markview_run(markview_t app) {
 		cJSON_Delete(configurationJson);
 	}
 
-	// deallocate stuff
+	return 0;
+}
+
+void markview_destroy(markview_t app) {
+	markview_detail* markview = app;
+
 	webview_destroy(markview->webview);
+
 	SDL_DestroyRenderer(markview->renderer);
 	SDL_DestroyWindow(markview->window);
 	SDL_Quit();
 
+	if (markview->title) {
+		free(markview->title);
+	}
+
 	if (markview->html) {
 		free(markview->html);
 	}
-
-	return 0;
 }
