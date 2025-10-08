@@ -1,4 +1,4 @@
-#include "SDL3/SDL_log.h"
+#include <SDL3/SDL_log.h>
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
@@ -8,13 +8,7 @@
 #define MARKVIEW_CONFIGURATION_FILENAME "configuration.json"
 
 char* markview_configuration_folder_path() {
-	char* appdata;
-	size_t szAppdata = 0;
-
-	if (_dupenv_s(&appdata, &szAppdata, "APPDATA") != 0) {
-		SDL_Log("_dupenv_s erroed");
-		return NULL;
-	}
+	char* appdata = getenv("APPDATA");
 
 	if (NULL == appdata) {
 		SDL_Log("APPDATA is not set");
@@ -30,11 +24,7 @@ char* markview_configuration_folder_path() {
 	}
 
 	snprintf(configurationFilePath, pathLenght, "%s\\%s\\", appdata, MARKVIEW_PROGRAM_NAME);
-
-	if (appdata) {
-		free(appdata);
-	}
-
+	
 	return configurationFilePath;	
 }
 

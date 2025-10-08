@@ -46,11 +46,9 @@ set(SDL_DIALOG OFF)
 add_compile_definitions(-DCMARK_GFM_STATIC_DEFINE=1)
 add_compile_definitions(-DCMARK_GFM_EXTENSIONS_STATIC_DEFINE=1)
 
-if(WIN32)
-	target_sources(${PROJECT_NAME} PRIVATE src/WinMain.c)
-endif()
-
 include_directories(${PROJECT_NAME} include)
+add_compile_definitions(-DCMAKE_EXE_LINKER_FLAGS="-static")
+target_link_libraries(${PROJECT_NAME} PRIVATE -static-libstdc++)
 
 # embed stuff
 include(cmake/FileEmbed.cmake)
@@ -59,8 +57,6 @@ FileEmbedAdd(assets/welcome.md)
 FileEmbedAdd(assets/prism.min.js)
 FileEmbedAdd(assets/prism.css)
 target_link_libraries(${PROJECT_NAME} PRIVATE file_embed)
-# https://stackoverflow.com/questions/61553637/which-lib-do-i-have-to-link-for-wdupenv-s
-target_link_libraries(${PROJECT_NAME} PRIVATE msvcr120)
 
 # cmark stuff
 add_subdirectory(vendor/cmark-gfm)
