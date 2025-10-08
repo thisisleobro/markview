@@ -5,7 +5,7 @@ project(markview CXX C)
 # add_executable(${PROJECT_NAME} WIN32)
 add_executable(${PROJECT_NAME})
 
-# set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
+set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release,ON>)
 
 file(GLOB_RECURSE SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.c)
 
