@@ -49,6 +49,7 @@ add_compile_definitions(-DCMARK_GFM_EXTENSIONS_STATIC_DEFINE=1)
 include_directories(${PROJECT_NAME} include)
 add_compile_definitions(-DCMAKE_EXE_LINKER_FLAGS="-static")
 target_link_libraries(${PROJECT_NAME} PRIVATE -static-libstdc++)
+target_link_libraries(${PROJECT_NAME} PRIVATE -lunwind -static)
 
 # embed stuff
 include(cmake/FileEmbed.cmake)
