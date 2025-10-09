@@ -49,7 +49,26 @@ add_compile_definitions(-DCMARK_GFM_EXTENSIONS_STATIC_DEFINE=1)
 include_directories(${PROJECT_NAME} include)
 add_compile_definitions(-DCMAKE_EXE_LINKER_FLAGS="-static")
 target_link_libraries(${PROJECT_NAME} PRIVATE -static-libstdc++)
-target_link_libraries(${PROJECT_NAME} PRIVATE -lunwind -static)
+
+
+cmake_path(GET CMAKE_C_COMPILER PARENT_PATH BINFOLDER)
+cmake_path(GET BINFOLDER PARENT_PATH TOOLCHAINFOLDER)
+message(${TOOLCHAINFOLDER}/lib)
+
+find_library(
+	LIBUNWIND_LIBUNWIND
+	NAMES
+		unwind
+		libunwind
+		lunwind
+	PATHS
+	    ${TOOLCHAINFOLDER}/aarch64-w64-mingw32/lib
+)
+
+if (LIBUNWIND_LIBUNWIND)
+    message(STATUS "Found libunwind: ${LIBUNWIND_LIBUNWIND}")
+	target_link_libraries(${PROJECT_NAME} PRIVATE -lunwind -static)
+endif()
 
 # embed stuff
 include(cmake/FileEmbed.cmake)
