@@ -12,20 +12,20 @@ jobs:
           fetch-depth: 0
           submodules: 'recursive'
       - name: Setup C/C++ Compiler
-        uses: rlalik/setup-cpp-compiler@master
-        with:
-          compiler: gcc-latest
+        run: winget install MartinStorsjo.LLVM-MinGW.UCRT --version 21.1.2-20250924 --silent --accept-source-agreements --accept-package-agreements --location C:\llvm-mingw\
       - name: Create build folder
         run: mkdir build
       - name: Run cmake
+        env:
+          CC: C:\llvm-mingw\llvm-mingw-20250924-ucrt-x86_64\bin\gcc.exe
+          CXX: C:\llvm-mingw\llvm-mingw-20250924-ucrt-x86_64\bin\g++.exe
         working-directory: build
         run: cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
       - name: Run make
         working-directory: ./build
-        run: make markview
+        run: mingw32-make markview
       - name: Generate time
         id: get-time
-        shell: powershell
         run: |
           $timestamp = Get-Date -Format "yyyy-MM-ddTHHmmss"
           Write-Output TIME=$timestamp >> $env:GITHUB_OUTPUT
@@ -35,6 +35,5 @@ jobs:
           TIME: ${{ steps.get-time.outputs.TIME }}
           TITLE: markview ${{ steps.get-time.outputs.TIME }} snapshot
         working-directory: ./build
-        shell: powershell
         run: |
           gh release create ${{ env.TIME }} --title="${{ env.TITLE }}" markview.exe

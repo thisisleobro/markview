@@ -53,7 +53,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE -static-libstdc++)
 
 cmake_path(GET CMAKE_C_COMPILER PARENT_PATH BINFOLDER)
 cmake_path(GET BINFOLDER PARENT_PATH TOOLCHAINFOLDER)
-message(${TOOLCHAINFOLDER}/lib)
 
 find_library(
 	LIBUNWIND_LIBUNWIND
