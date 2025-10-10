@@ -24,7 +24,6 @@ else()
 	message(FATAL_ERROR "unknown OS")
 endif()
 
-set(BUILD_SHARED_LIBS OFF)
 set(CMARK_SHARED OFF)
 set(CMARK_STATIC ON)
 set(CMARK_TESTS OFF)
@@ -95,6 +94,8 @@ add_subdirectory(vendor/SDL)
 target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
 
 # cJSON stuff
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+set(CJSON_OVERRIDE_BUILD_SHARED_LIBS OFF)
 add_subdirectory(vendor/cJSON)
 target_link_libraries(${PROJECT_NAME} PRIVATE cjson)
 include_directories(${PROJECT_NAME} vendor/cJSON)
