@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW) # so that call to option does not discard already set values
+
 project(markview CXX C)
 
 # add_executable(${PROJECT_NAME} WIN32)
@@ -24,7 +26,6 @@ else()
 	message(FATAL_ERROR "unknown OS")
 endif()
 
-set(BUILD_SHARED_LIBS OFF)
 set(CMARK_SHARED OFF)
 set(CMARK_STATIC ON)
 set(CMARK_TESTS OFF)
@@ -49,7 +50,6 @@ add_compile_definitions(-DCMARK_GFM_EXTENSIONS_STATIC_DEFINE=1)
 include_directories(${PROJECT_NAME} include)
 add_compile_definitions(-DCMAKE_EXE_LINKER_FLAGS="-static")
 target_link_libraries(${PROJECT_NAME} PRIVATE -static-libstdc++)
-
 
 cmake_path(GET CMAKE_C_COMPILER PARENT_PATH BINFOLDER)
 cmake_path(GET BINFOLDER PARENT_PATH TOOLCHAINFOLDER)
@@ -95,6 +95,8 @@ add_subdirectory(vendor/SDL)
 target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
 
 # cJSON stuff
+set(CJSON_OVERRIDE_BUILD_SHARED_LIBS ON)
+set(CJSON_BUILD_SHARED_LIBS OFF)
 add_subdirectory(vendor/cJSON)
 target_link_libraries(${PROJECT_NAME} PRIVATE cjson)
 include_directories(${PROJECT_NAME} vendor/cJSON)
