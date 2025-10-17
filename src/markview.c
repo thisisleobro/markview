@@ -29,6 +29,7 @@
 #include <welcome_md.h>
 #include <prism_min_js.h>
 #include <prism_css.h>
+#include <markview_js.h>
 #include <windef.h>
 #include <markview/markdown.h>
 #include <markview/scripting.h>
@@ -82,6 +83,12 @@ void resize_window(webview_t webview) {
 			MoveWindow(widget_handle, r.left, r.top, r.right - r.left, r.bottom - r.top, TRUE);
 		}
 	}
+}
+
+void toggle_fullscreen(const char *id, const char *req, void *arg) {
+	markview_detail* markview = (markview_detail*)arg;
+	bool isFullScreen = SDL_GetWindowFlags(markview->window) & SDL_WINDOW_FULLSCREEN;
+	SDL_SetWindowFullscreen(markview->window, !isFullScreen);
 }
 
 void focus_webview(webview_t webview) {
@@ -244,6 +251,7 @@ markview_t markview_create(char* filename) {
 		resize_window(markview->webview);
 		focus_webview(markview->webview);
 
+		webview_bind(markview->webview, "markview_toggle_fullscreen", toggle_fullscreen, markview);
 		webview_set_html(markview->webview, markview->html);
 	}
 
@@ -251,6 +259,9 @@ markview_t markview_create(char* filename) {
 
 	if (!markview_load_javascript(markview, (char *)prism_min_js_data)) {
 		printf("Error: evaluating prism.js\n");
+	}
+	if (!markview_load_javascript(markview, (char *)markview_js_data)) {
+		printf("Error: evaluating markview.js\n");
 	}
 
 	return markview;
