@@ -11,3 +11,6 @@
 [submodule "vendor/cJSON"]
 	path = vendor/cJSON
 	url = https://github.com/DaveGamble/cJSON.git
+[submodule "vendor/DOMPurify"]
+	path = vendor/DOMPurify
+	url = https://github.com/cure53/DOMPurify.git
