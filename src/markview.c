@@ -1,13 +1,13 @@
 #include <webview/types.h>
-#include <markview.h>
-#include <markview/constants.h>
+#include "markview.h"
+#include "constants.h"
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_scancode.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_log.h>
 #include <SDL3/SDL_video.h>
 #include <WebView2.h>
-#include <markview/markdown.h>
+#include "markdown.h"
 #include <webview/errors.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,7 +23,7 @@
 #include <cmark-gfm-extension_api.h>
 #include <cmark-gfm-core-extensions.h>
 #include <string.h>
-#include <markview/filesystem.h>
+#include "filesystem.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_system.h>
 #include <welcome_md.h>
@@ -31,47 +31,62 @@
 #include <prism_css.h>
 #include <markview_js.h>
 #include <windef.h>
-#include <markview/markdown.h>
-#include <markview/scripting.h>
+#include "markdown.h"
+#include "settings.h"
+#include "utils.h"
 #include <cJSON.h>
 
-#define STYLE_TAG_FORMAT "<style>%s</style>"
-#define TITLE_SEPARATOR " - "
-#define FILENAME_EMPTY_FILE "Welcome"
-#define WINDOW_DEFAULT_WIDTH 900
-#define WINDOW_DEFAULT_HEIGHT 600
-#define DEFAULT_WINDOW_SIZE SDL_WINDOW_RESIZABLE
-
-#define CMARK_OPTIONS CMARK_OPT_DEFAULT | CMARK_OPT_FOOTNOTES | CMARK_OPT_LIBERAL_HTML_TAG
 
 typedef struct {
+	markview_settings_t settings;
 	char* title;
 	char* html;
 	webview_t webview;
 	SDL_Window* window;
 	SDL_Renderer* renderer;
-	int windowWidth;
-	int windowHeight;
 } markview_detail;
 
-bool markview_load_javascript(markview_t app, char* content) {
+bool _markview_run_javascript(markview_t app, char* content) {
 	markview_detail* markview = app;
+
+	// fprintf(stderr, "running js: '%s'\n",content);
 	webview_error_t evalError = webview_eval(markview->webview, content);
+	
 	if (evalError == WEBVIEW_ERROR_OK) {
 		return true;
 	}
+
+	fprintf(stderr, "some error running js: '%s'\n",content);
+
 	return false;
 }
 
-bool markview_load_javascript_from_file(markview_t app, char* filename) {
+bool _markview_apply_css(markview_t app, char* content) {
 	markview_detail* markview = app;
 
-	char* content = markview_file_read(filename);
-	if (NULL == content) {
-		return false;
+	const char* script = "applyCss(\"%s\");\n";
+
+	const char* base64 = (char*)base64_encode((const unsigned char*)content, strlen(content), NULL);
+
+	// fprintf(stdout, "\tbase64: '%s'\n%s\n", base64, markview->title);
+
+	const size_t len = strlen(script) + strlen(base64) + 1;
+
+	char* fullScript = malloc(len);
+
+	snprintf(fullScript, len, script, base64);
+
+	// fprintf(stdout, "\tinjecting: \n%s\n", fullScript);
+
+	webview_error_t evalError = webview_eval(markview->webview, fullScript);
+
+	if (evalError == WEBVIEW_ERROR_OK) {
+		return true;
 	}
 
-	return markview_load_javascript(markview->webview, content);
+	fprintf(stderr, "some error applying css\n");
+
+	return false;
 }
 
 // TODO: handle cross platform
@@ -85,85 +100,50 @@ void resize_window(webview_t webview) {
 	}
 }
 
-void toggle_fullscreen(const char *id, const char *req, void *arg) {
+void markview_toggle_fullscreen(const char *id, const char *req, void *arg) {
 	markview_detail* markview = (markview_detail*)arg;
-	bool isFullScreen = SDL_GetWindowFlags(markview->window) & SDL_WINDOW_FULLSCREEN;
-	SDL_SetWindowFullscreen(markview->window, !isFullScreen);
+	SDL_SetWindowFullscreen(markview->window, !(SDL_GetWindowFlags(markview->window) & SDL_WINDOW_FULLSCREEN));
+}
+
+void markview_open_file(const char *id, const char *req, void *arg) {
+	markview_detail* markview = (markview_detail*)arg;
+
+	cJSON* argumentsArray = cJSON_Parse(req);
+	cJSON* filenameField = cJSON_GetArrayItem(argumentsArray, 0);
+
+	if (!cJSON_IsString(filenameField)) {
+		fprintf(stderr, "markview_open_file called with invalid argument filename\n");
+		return;
+	}
+
+	char* filename = malloc(strlen(filenameField->valuestring) + 1);
+	strcpy(filename, filenameField->valuestring);
+
+	cJSON_Delete(argumentsArray);
+
+	markview_render_from_file(markview, filename, filename);
 }
 
 void focus_webview(webview_t webview) {
 	ICoreWebView2Controller* controller_ptr =
-		(ICoreWebView2Controller *)webview_get_native_handle(webview, WEBVIEW_NATIVE_HANDLE_KIND_BROWSER_CONTROLLER);
+		(ICoreWebView2Controller *)webview_get_native_handle(
+			webview, WEBVIEW_NATIVE_HANDLE_KIND_BROWSER_CONTROLLER);
 
 	if (controller_ptr) {
 		controller_ptr->lpVtbl->MoveFocus(controller_ptr, COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
 	}
 }
 
-markview_t markview_create(char* filename) {
-	SDL_Log("starting %s\n", MARKVIEW_PROGRAM_NAME);
+markview_t markview_create() {
+	fprintf(stdout, "starting %s\n", MARKVIEW_PROGRAM_NAME);
 	markview_detail* markview = malloc(sizeof(markview_detail));
+	markview->html = NULL;
+	markview->title = NULL;
+	markview->settings = markview_settings_deserialize();
 
-	// set window title
-	char* actualFilename = NULL == filename ? FILENAME_EMPTY_FILE: filename;
-	size_t titleSize = strlen(MARKVIEW_PROGRAM_NAME) + strlen(TITLE_SEPARATOR) + strlen(actualFilename) + 1;
-	markview->title = malloc(titleSize);
-	snprintf(markview->title, titleSize , "%s%s%s", MARKVIEW_PROGRAM_NAME, TITLE_SEPARATOR, actualFilename);
-
-	markview->windowWidth = WINDOW_DEFAULT_WIDTH;
-	markview->windowHeight = WINDOW_DEFAULT_HEIGHT;
-
-	SDL_WindowFlags windowFlags = DEFAULT_WINDOW_SIZE;
-
-	cJSON* width = NULL;
-	cJSON* height = NULL;
-	cJSON* borderless = NULL;
-	cJSON* maximized = NULL;
-
-	char* configurationFilePath = markview_configuration_file_path();
-	SDL_Log("Reading configuration file at %s", configurationFilePath);
-
-	if (markview_file_exists(configurationFilePath)) {
-		char* configurationContent = markview_file_read(configurationFilePath);
-		cJSON* configurationJson = cJSON_Parse(configurationContent);
-		const char *error_ptr = NULL;
-
-		if (NULL == configurationJson) {
-			error_ptr = cJSON_GetErrorPtr();
-			if (error_ptr != NULL) {
-				SDL_Log("configurationJson error. Error: %s\n", error_ptr);
-			}
-		}
-
-		width = cJSON_GetObjectItemCaseSensitive(configurationJson, "width");
-		height = cJSON_GetObjectItemCaseSensitive(configurationJson, "height");
-		borderless = cJSON_GetObjectItemCaseSensitive(configurationJson, "borderless");
-		maximized = cJSON_GetObjectItemCaseSensitive(configurationJson, "maximized");
-
-		if (cJSON_IsTrue(borderless)) {
-			windowFlags = windowFlags | SDL_WINDOW_BORDERLESS;
-		}
-
-		if (cJSON_IsTrue(maximized)) {
-			windowFlags = windowFlags | SDL_WINDOW_MAXIMIZED;
-		} else {
-			if (cJSON_IsNumber(width)) {
-				markview->windowWidth = width->valueint;
-			}
-
-			if (cJSON_IsNumber(height)) {
-				markview->windowHeight = height->valueint;
-			}
-		}
-
-		if (configurationContent) {
-			free(configurationContent);
-		}
-
-		cJSON_Delete(configurationJson);
-	}
-
-	SDL_Log("Finished reading configuration file");
+	SDL_WindowFlags windowFlags = MARKVIEW_SDL_DEFAULT_WINDOW_SIZE;
+	windowFlags = markview->settings.maximized? windowFlags | SDL_WINDOW_MAXIMIZED: windowFlags;
+	windowFlags = markview->settings.borderless? windowFlags | SDL_WINDOW_BORDERLESS: windowFlags;
 
 	// Initialize SDL
 	if (!SDL_Init(SDL_INIT_EVENTS)) {
@@ -173,65 +153,25 @@ markview_t markview_create(char* filename) {
 	}
 
 	// Create a window
-	if (!SDL_CreateWindowAndRenderer(markview->title, markview->windowWidth, markview->windowHeight, windowFlags, &markview->window, &markview->renderer)) {
+	if (!SDL_CreateWindowAndRenderer(
+		MARKVIEW_PROGRAM_NAME,
+		markview->settings.width,
+		markview->settings.height,
+		windowFlags,
+		&markview->window,
+		&markview->renderer))
+	{
 		SDL_Log("Window or renderer could not be created! SDL_Error: %s\n", SDL_GetError());
 		SDL_Quit();
 		return NULL;
 	}
 
 	// Paint screen according to theme.
-	if (!SDL_SetRenderDrawColor(markview->renderer, 255, 255, 255, 255) || !SDL_RenderClear(markview->renderer) || !SDL_RenderPresent(markview->renderer)) {
+	if (!SDL_SetRenderDrawColor(markview->renderer, 255, 255, 255, 255)
+		|| !SDL_RenderClear(markview->renderer)
+		|| !SDL_RenderPresent(markview->renderer))
+	{
 		SDL_Log("Could not clear window! SDL_Error: %s\n", SDL_GetError());
-	}
-
-	size_t styleSize = strlen(STYLE_TAG_FORMAT) + prism_css_size + 1;
-	char *styles = malloc(styleSize);
-
-	snprintf(styles, styleSize, STYLE_TAG_FORMAT, prism_css_data);
-
-	if (NULL != filename) {
-		printf("reading file: %s\n", filename);
-
-		// 1. Load the markdow file
-		char *markdown = markview_file_read(filename);
-		if (!markdown) {
-			printf("error reading markdown\n");
-			return NULL;
-		}
-
-		// 2. Parse markdown to html
-		char *rawHtml = markview_markdown_to_html(markdown, strlen(markdown), CMARK_OPTIONS);
-
-		size_t htmlSize = strlen(rawHtml) + strlen(styles) + 1;
-
-		markview->html = malloc(htmlSize);
-
-		snprintf(markview->html, htmlSize, "%s\n%s", styles, rawHtml);
-
-		if (rawHtml) {
-			free(rawHtml);
-		}
-
-		if (styles) {
-			free(styles);
-		}
-
-		if (markdown) {
-			free(markdown);
-		}
-	} else {
-		printf("No file provided. Showing welcome file\n");
-		char *rawHtml = markview_markdown_to_html((char *)welcome_md_data, welcome_md_size, CMARK_OPTIONS);
-
-		size_t htmlSize = strlen(rawHtml) + strlen(styles) + 1;
-
-		markview->html = malloc(htmlSize);
-
-		snprintf(markview->html, htmlSize, "%s\n%s", styles, rawHtml);
-
-		if (rawHtml) {
-			free(rawHtml);
-		}
 	}
 
 	SDL_PropertiesID properties = SDL_GetWindowProperties(markview->window);
@@ -246,35 +186,71 @@ markview_t markview_create(char* filename) {
 	markview->webview = webview_create(1, hwnd);
 	if (NULL == markview->webview) {
 		SDL_Log("Error creating webview\n");
-	} else {
-		// https://github.com/webview/webview/issues/1195#issuecomment-2380564512
-		resize_window(markview->webview);
-		focus_webview(markview->webview);
-
-		webview_bind(markview->webview, "markview_toggle_fullscreen", toggle_fullscreen, markview);
-		webview_set_html(markview->webview, markview->html);
 	}
 
-	printf("Evaluate scripts\n");
+	resize_window(markview->webview);
+	focus_webview(markview->webview);
 
-	if (!markview_load_javascript(markview, (char *)prism_min_js_data)) {
-		printf("Error: evaluating prism.js\n");
-	}
-	if (!markview_load_javascript(markview, (char *)markview_js_data)) {
-		printf("Error: evaluating markview.js\n");
-	}
+	// bind functions
+	webview_bind(markview->webview, "markview_toggle_fullscreen", markview_toggle_fullscreen, markview);
+	webview_bind(markview->webview, "markview_open_file", markview_open_file, markview);
 
 	return markview;
+}
+
+bool markview_render_from_file(markview_t app, char* title, char* filename) {
+	if (!markview_file_exists(filename)) {
+		fprintf(stderr, "file does not exist or you dont have access to it\n");
+		return false;
+	}
+
+	char* content = markview_file_read(filename);
+
+	return markview_render_from_string(app, title, content);
+}
+
+bool markview_render_from_string(markview_t app, char* title, char* content) {
+	markview_detail* markview = app;
+
+	// if (markview->html) {
+	// 	// navigate everytime but first. This allows us to use the nativa navigation
+	// 	webview_navigate(markview->webview, "about:blank");	
+	// }
+
+
+	// deallocate in case we call multiple times
+	if (markview->html)
+		free(markview->html);
+
+	if (markview->title)
+		free(markview->title);
+
+	size_t titleSize = strlen(MARKVIEW_PROGRAM_NAME) + strlen(MARKVIEW_TITLE_SEPARATOR) + strlen(title) + 1;
+	
+	markview->title = malloc(titleSize);
+	// TODO: assert memory is valid
+	snprintf(markview->title, titleSize , "%s%s%s", MARKVIEW_PROGRAM_NAME, MARKVIEW_TITLE_SEPARATOR, title);
+
+	markview->html = markview_markdown_to_html(content, strlen(content), MARKVIEW_CMARK_OPTIONS);
+
+	webview_set_html(markview->webview, markview->html);
+	webview_set_title(markview->webview, markview->title);
+
+	fprintf(stdout, "apply scripts and css for '%s'\n", markview->title);
+	// _markview_run_javascript(markview, "alert(1)");
+	_markview_run_javascript(markview, (char*)markview_js_data);
+	_markview_run_javascript(markview, (char*)prism_min_js_data);
+	_markview_apply_css(markview, (char*)prism_css_data);
+
+	return true;
 }
 
 int markview_run(markview_t app) {
 	markview_detail* markview = app;
 	int running = 1;
 	SDL_Event event;
-	bool fullscreen;
 
 	while (running) {
-		// Handle events
 		while (SDL_PollEvent(&event)) {
 			if (event.type == SDL_EVENT_QUIT) {
 				SDL_Log("Quit, please!");
@@ -289,60 +265,25 @@ int markview_run(markview_t app) {
 
 			if (event.type == SDL_EVENT_DROP_FILE) {
 				// TODO: handle open files by droping file inside
-				SDL_Log("File was droped");
 				continue;
 			}
 
 			if (event.type == SDL_EVENT_KEY_DOWN) {
 				if (event.key.scancode == SDL_SCANCODE_F11) {
-					SDL_SetWindowFullscreen(markview->window, (fullscreen =! fullscreen));
+					SDL_SetWindowFullscreen(
+						markview->window,
+						!(SDL_GetWindowFlags(markview->window) & SDL_WINDOW_FULLSCREEN));
 				}
 			}
 		}
 	}
 
 	// save configuration
-	char* configurationFolderPath = markview_configuration_folder_path();
-	if (markview_folder_create(configurationFolderPath)) {
-		SDL_GetWindowSize(markview->window, &markview->windowWidth, &markview->windowHeight);
+	markview->settings.maximized = SDL_GetWindowFlags(markview->window) & SDL_WINDOW_MAXIMIZED;
+	markview->settings.borderless = SDL_GetWindowFlags(markview->window) & SDL_WINDOW_BORDERLESS;
+	SDL_GetWindowSize(markview->window, &markview->settings.width, &markview->settings.height);
 
-		char* configurationFilePath = markview_configuration_file_path();
-		char* configurationContent = markview_file_read(configurationFilePath);
-
-		cJSON* configurationJson = cJSON_CreateObject();
-		cJSON* width = cJSON_CreateNumber(markview->windowWidth);
-		cJSON* height = cJSON_CreateNumber(markview->windowHeight);
-
-		SDL_WindowFlags windowFlags = SDL_GetWindowFlags(markview->window);
-		cJSON* borderless = cJSON_CreateBool(windowFlags & SDL_WINDOW_BORDERLESS);
-		cJSON* maximized = cJSON_CreateBool(windowFlags & SDL_WINDOW_MAXIMIZED);
-
-		cJSON_AddItemToObject(configurationJson, "width", width);
-		cJSON_AddItemToObject(configurationJson, "height", height);
-		cJSON_AddItemToObject(configurationJson, "borderless", borderless);
-		cJSON_AddItemToObject(configurationJson, "maximized", maximized);
-
-		char* jsonString = cJSON_Print(configurationJson);
-
-		SDL_Log("saving configuration\n");
-		SDL_Log("%s", jsonString);
-
-		markview_file_write(configurationFilePath, jsonString);
-
-		if (jsonString) {
-			free(jsonString);
-		}
-
-		if (configurationFolderPath) {
-			free(configurationFolderPath);
-		}
-
-		if (configurationFilePath) {
-			free(configurationFilePath);
-		}
-
-		cJSON_Delete(configurationJson);
-	}
+	markview_settings_serialize(markview->settings);
 
 	// deallocations
 	webview_destroy(markview->webview);

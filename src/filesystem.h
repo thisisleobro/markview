@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 
-bool markview_folder_exists(const char *folder_path);
+bool markview_folder_exists(const char *folderpath);
 bool markview_folder_create(const char* folderpath);
 bool markview_file_exists(const char* filepath);
 char* markview_file_read(const char* filepath);

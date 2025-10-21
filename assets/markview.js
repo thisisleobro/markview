@@ -1,9 +1,19 @@
 document.addEventListener('keydown', async function(event) {
+	console.log('keydown')
 	if (event.key === 'F11') {
 		console.log('F11 key pressed');
 		await markview_toggle_fullscreen()
 	}
 });
+
+
+function applyCss(base64) {
+	const style = document.createElement('style');
+
+	style.textContent = atob(base64);
+	
+	document.head.appendChild(style);
+}
 
 
 function interceptClickEvent(e) {
@@ -12,21 +22,23 @@ function interceptClickEvent(e) {
 	const target = e.target || e.srcElement;
 	let href = '';
 
-
 	if (target.tagName === 'A') {
 		href = target.getAttribute('href');
 	}
-	else if(target.tagName === 'IMG') {
+
+	if (target.tagName === 'IMG') {
 		href = target.parentElement.getAttribute('href');
 	}
 
-	if(href.startsWith('http') 
-		&& !href.startsWith('http://localhost')
-		&& !href.startsWith('http://127.0.0.1')
-	) {
-		alert(href)
-		// openExternalLink(href);
+	if (!href) {
+		return
 	}
+
+	if (href.endsWith('.md')) {
+		markview_open_file(href.startsWith('file://')? href.slice(7): href)
+	}
+
+	// TODO ask system to open it
 }
 
 if (document.addEventListener) {
@@ -34,3 +46,17 @@ if (document.addEventListener) {
 } else if (document.attachEvent) {
 	document.attachEvent('onclick', interceptClickEvent);
 }
+
+// dragover is needed
+document.addEventListener("dragover", (e) => e.preventDefault())
+
+document.addEventListener("drop", (e) => {
+	e.preventDefault();
+
+	const files = e.dataTransfer.files;
+	console.log(files)
+
+	if (files.length > 0 && files[0].name.endsWith('.md')) {
+		markview_open_file(files[0].name);
+	}
+});

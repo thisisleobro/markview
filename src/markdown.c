@@ -4,8 +4,7 @@
 #include <cmark-gfm_export.h>
 #include <cmark-gfm-extension_api.h>
 #include <cmark-gfm-core-extensions.h>
-#include <markview/markdown.h>
-
+#include "markdown.h"
 
 
 void register_extension_by_name(cmark_parser* parser, cmark_llist* list, char* name) {
