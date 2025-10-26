@@ -51,7 +51,7 @@ bool _markview_run_javascript(markview_t app, char* content) {
 
 	// fprintf(stderr, "running js: '%s'\n",content);
 	webview_error_t evalError = webview_eval(markview->webview, content);
-	
+
 	if (evalError == WEBVIEW_ERROR_OK) {
 		return true;
 	}
@@ -90,13 +90,32 @@ bool _markview_apply_css(markview_t app, char* content) {
 }
 
 // TODO: handle cross platform
-void resize_window(webview_t webview) {
-	HWND widget_handle = (HWND)webview_get_native_handle(webview, WEBVIEW_NATIVE_HANDLE_KIND_UI_WIDGET);
+void show_webview(markview_detail* markview) {
+	HWND widget_handle = (HWND)webview_get_native_handle(markview->webview, WEBVIEW_NATIVE_HANDLE_KIND_UI_WIDGET);
 	if (widget_handle) {
 		RECT r = {};
 		if (GetClientRect(GetParent(widget_handle), &r)) {
 			MoveWindow(widget_handle, r.left, r.top, r.right - r.left, r.bottom - r.top, TRUE);
 		}
+	}
+}
+
+void hide_webview(markview_detail* markview) {
+	HWND widget_handle = (HWND)webview_get_native_handle(markview->webview, WEBVIEW_NATIVE_HANDLE_KIND_UI_WIDGET);
+	if (widget_handle) {
+		RECT r = {};
+		if (GetClientRect(GetParent(widget_handle), &r)) {
+			MoveWindow(widget_handle, r.left, r.top, 0, 0, TRUE);
+		}
+	}
+}
+
+void clear_window(markview_detail* markview) {
+	if (!SDL_SetRenderDrawColor(markview->renderer, 255, 255, 255, 255)
+		|| !SDL_RenderClear(markview->renderer)
+		|| !SDL_RenderPresent(markview->renderer))
+	{
+		SDL_Log("Could not clear window! SDL_Error: %s\n", SDL_GetError());
 	}
 }
 
@@ -124,14 +143,10 @@ void markview_open_file(const char *id, const char *req, void *arg) {
 	markview_render_from_file(markview, filename, filename);
 }
 
-void focus_webview(webview_t webview) {
-	ICoreWebView2Controller* controller_ptr =
-		(ICoreWebView2Controller *)webview_get_native_handle(
-			webview, WEBVIEW_NATIVE_HANDLE_KIND_BROWSER_CONTROLLER);
+void markview_hide_webview(const char *id, const char *req, void *arg) {
+	markview_detail* markview = (markview_detail*)arg;
 
-	if (controller_ptr) {
-		controller_ptr->lpVtbl->MoveFocus(controller_ptr, COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
-	}
+	hide_webview(markview);
 }
 
 markview_t markview_create() {
@@ -167,12 +182,7 @@ markview_t markview_create() {
 	}
 
 	// Paint screen according to theme.
-	if (!SDL_SetRenderDrawColor(markview->renderer, 255, 255, 255, 255)
-		|| !SDL_RenderClear(markview->renderer)
-		|| !SDL_RenderPresent(markview->renderer))
-	{
-		SDL_Log("Could not clear window! SDL_Error: %s\n", SDL_GetError());
-	}
+	clear_window(markview);
 
 	SDL_PropertiesID properties = SDL_GetWindowProperties(markview->window);
 	HWND hwnd = (HWND)SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
@@ -188,12 +198,12 @@ markview_t markview_create() {
 		SDL_Log("Error creating webview\n");
 	}
 
-	resize_window(markview->webview);
-	focus_webview(markview->webview);
+	show_webview(markview);
 
 	// bind functions
 	webview_bind(markview->webview, "markview_toggle_fullscreen", markview_toggle_fullscreen, markview);
 	webview_bind(markview->webview, "markview_open_file", markview_open_file, markview);
+	webview_bind(markview->webview, "markview_hide_webview", markview_hide_webview, markview);
 
 	return markview;
 }
@@ -214,9 +224,8 @@ bool markview_render_from_string(markview_t app, char* title, char* content) {
 
 	// if (markview->html) {
 	// 	// navigate everytime but first. This allows us to use the nativa navigation
-	// 	webview_navigate(markview->webview, "about:blank");	
+	// 	webview_navigate(markview->webview, "about:blank");
 	// }
-
 
 	// deallocate in case we call multiple times
 	if (markview->html)
@@ -226,7 +235,7 @@ bool markview_render_from_string(markview_t app, char* title, char* content) {
 		free(markview->title);
 
 	size_t titleSize = strlen(MARKVIEW_PROGRAM_NAME) + strlen(MARKVIEW_TITLE_SEPARATOR) + strlen(title) + 1;
-	
+
 	markview->title = malloc(titleSize);
 	// TODO: assert memory is valid
 	snprintf(markview->title, titleSize , "%s%s%s", MARKVIEW_PROGRAM_NAME, MARKVIEW_TITLE_SEPARATOR, title);
@@ -252,6 +261,7 @@ int markview_run(markview_t app) {
 
 	while (running) {
 		while (SDL_PollEvent(&event)) {
+			// SDL_Log("event %d\n", event.type);
 			if (event.type == SDL_EVENT_QUIT) {
 				SDL_Log("Quit, please!");
 				running = 0;
@@ -259,12 +269,25 @@ int markview_run(markview_t app) {
 			}
 
 			if (event.type == SDL_EVENT_WINDOW_RESIZED) {
-				resize_window(markview->webview);
+				show_webview(markview);
+				continue;
+			}
+
+			// only cathces when hovered over windows borders because webview widget eats most events.
+			// to circunvent we resize the webview widget to (0,0) so that we can get SDL_EVENT_DROP_FILE
+			if (event.type == SDL_EVENT_DROP_BEGIN) {
+				hide_webview(markview);
 				continue;
 			}
 
 			if (event.type == SDL_EVENT_DROP_FILE) {
-				// TODO: handle open files by droping file inside
+				markview_render_from_file(markview, (char*)event.drop.data, (char*)event.drop.data);
+				continue;
+			}
+
+			// resize webview widget back now that we already handled SDL_EVENT_DROP_FILE
+			if (event.type == SDL_EVENT_DROP_COMPLETE) {
+				show_webview(markview);
 				continue;
 			}
 
