@@ -47,16 +47,10 @@ if (document.addEventListener) {
 	document.attachEvent('onclick', interceptClickEvent);
 }
 
-// dragover is needed
-document.addEventListener("dragover", (e) => e.preventDefault())
+// hide the webview widget so we can capture events
+document.addEventListener("dragover", (e) => {
+	e.preventDefault()
+	markview_hide_webview()
+})
 
-document.addEventListener("drop", (e) => {
-	e.preventDefault();
-
-	const files = e.dataTransfer.files;
-	console.log(files)
-
-	if (files.length > 0 && files[0].name.endsWith('.md')) {
-		markview_open_file(files[0].name);
-	}
-});
+document.addEventListener("drop", (e) => e.preventDefault());
