@@ -27,7 +27,7 @@ jobs:
       - name: Generate time
         id: get-time
         run: |
-          $timestamp = Get-Date -Format "yyyy-MM-ddTHHmmss"
+          $timestamp = Get-Date -Format "yyyyMMddTHHmmss"
           Write-Output TIME=$timestamp >> $env:GITHUB_OUTPUT
       - name: Create release
         env:
