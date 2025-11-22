@@ -2,25 +2,35 @@ cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW) # so that call to option does not discard already set values
 
+if(NOT CMAKE_BUILD_TYPE)
+	set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
+endif()
+
 project(markview CXX C)
 
 # add_executable(${PROJECT_NAME} WIN32)
 add_executable(${PROJECT_NAME})
 
-set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release,ON>)
+set_target_properties(${PROJECT_NAME} PROPERTIES
+	WIN32_EXECUTABLE $<$<CONFIG:Release>:ON>
+)
+
+# Debug, Release, RelWithDebInfo and MinSizeRel
+message("${PROJECT_NAME}: building in \"${CMAKE_BUILD_TYPE}\" mode")
+
 
 file(GLOB_RECURSE SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.c)
 
 target_sources(${PROJECT_NAME} PRIVATE ${SRC_FILES})
 
 if(WIN32)
-	message("Building ${PROJECT_NAME} for windows")
+	message("${PROJECT_NAME}: Building for windows")
     add_compile_definitions(MARKVIEW_WINDOWS)
 elseif(APPLE)
-	message("Building ${PROJECT_NAME} for apple")
+	message("${PROJECT_NAME}: Building for apple")
     add_compile_definitions(MARKVIEW_APPLE)
 elseif(UNIX AND NOT APPLE)
-	message("Building ${PROJECT_NAME} for linux")
+	message("${PROJECT_NAME}: Building for linux")
     add_compile_definitions(MARKVIEW_LINUX)
 else()
 	message(FATAL_ERROR "unknown OS")
