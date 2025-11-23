@@ -8,6 +8,7 @@
 #include <SDL3/SDL_video.h>
 #include <WebView2.h>
 #include "markdown.h"
+#include "shell_html.h"
 #include <webview/errors.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,30 +28,55 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_system.h>
 #include <welcome_md.h>
-#include <prism_min_js.h>
+#include <purify_min_js.h>
 #include <prism_css.h>
-#include <markview_js.h>
-#include <windef.h>
-#include "markdown.h"
+#include <prism_min_js.h>
 #include "settings.h"
 #include "utils.h"
 #include <cJSON.h>
 
+#define FUNCTION_SIGNATURE "%s(\"%s\");"
 
 typedef struct {
 	markview_settings_t settings;
 	char* title;
-	char* html;
 	webview_t webview;
 	SDL_Window* window;
 	SDL_Renderer* renderer;
 } markview_detail;
 
-bool _markview_run_javascript(markview_t app, char* content) {
+
+char* _markview_format_javasript_call(markview_t app, char* functionName, char* content) {
 	markview_detail* markview = app;
 
-	// fprintf(stderr, "running js: '%s'\n",content);
-	webview_error_t evalError = webview_eval(markview->webview, content);
+	const char* base64 = (char*)base64_encode((const unsigned char*)content, strlen(content), NULL);
+
+	const size_t len = strlen(FUNCTION_SIGNATURE) + strlen(functionName) + strlen(base64) + 1;
+
+	char* fullScript = malloc(len);
+
+	snprintf(fullScript, len, FUNCTION_SIGNATURE, functionName, base64);
+
+	// printf("javascript: %s\n", fullScript);
+
+	if (base64)
+		free((void*)base64);
+
+	return fullScript;
+}
+
+bool markview_webview_run_javascript(markview_t app, char* content, size_t lenght) {
+	markview_detail* markview = app;
+
+	char* tempContent = malloc(lenght);
+	strncpy(tempContent, content, lenght);
+
+	tempContent[lenght] = '\0';
+
+	printf("running js: '%s'\n", tempContent);
+	webview_error_t evalError = webview_eval(markview->webview, tempContent);
+	if (tempContent)
+		free((void *) tempContent);
 
 	if (evalError == WEBVIEW_ERROR_OK) {
 		return true;
@@ -61,24 +87,28 @@ bool _markview_run_javascript(markview_t app, char* content) {
 	return false;
 }
 
-bool _markview_apply_css(markview_t app, char* content) {
+bool markview_webview_render_html(markview_t app, char* content) {
 	markview_detail* markview = app;
 
-	const char* script = "applyCss(\"%s\");\n";
+	char* functionCall = _markview_format_javasript_call(markview, "markview_api_render_html", content);
 
-	const char* base64 = (char*)base64_encode((const unsigned char*)content, strlen(content), NULL);
+	webview_error_t evalError = webview_eval(markview->webview, functionCall);
 
-	// fprintf(stdout, "\tbase64: '%s'\n%s\n", base64, markview->title);
+	if (evalError == WEBVIEW_ERROR_OK) {
+		return true;
+	}
 
-	const size_t len = strlen(script) + strlen(base64) + 1;
+	fprintf(stderr, "some error applying css\n");
 
-	char* fullScript = malloc(len);
+	return false;
+}
 
-	snprintf(fullScript, len, script, base64);
+bool markview_webview_apply_css(markview_t app, char* content) {
+	markview_detail* markview = app;
 
-	// fprintf(stdout, "\tinjecting: \n%s\n", fullScript);
+	char* functionCall = _markview_format_javasript_call(markview, "markview_api_apply_css_from_base64", content);
 
-	webview_error_t evalError = webview_eval(markview->webview, fullScript);
+	webview_error_t evalError = webview_eval(markview->webview, functionCall);
 
 	if (evalError == WEBVIEW_ERROR_OK) {
 		return true;
@@ -152,8 +182,8 @@ void markview_hide_webview(const char *id, const char *req, void *arg) {
 markview_t markview_create() {
 	fprintf(stdout, "starting %s\n", MARKVIEW_PROGRAM_NAME);
 	markview_detail* markview = malloc(sizeof(markview_detail));
-	markview->html = NULL;
-	markview->title = NULL;
+	memset(markview, 0, sizeof(markview_detail));
+
 	markview->settings = markview_settings_deserialize();
 
 	SDL_WindowFlags windowFlags = MARKVIEW_SDL_DEFAULT_WINDOW_SIZE;
@@ -198,12 +228,19 @@ markview_t markview_create() {
 		SDL_Log("Error creating webview\n");
 	}
 
-	show_webview(markview);
-
+	webview_set_html(markview->webview, (char*)shell_html_data);
 	// bind functions
 	webview_bind(markview->webview, "markview_toggle_fullscreen", markview_toggle_fullscreen, markview);
 	webview_bind(markview->webview, "markview_open_file", markview_open_file, markview);
 	webview_bind(markview->webview, "markview_hide_webview", markview_hide_webview, markview);
+	// TODO: pass color scheme before showing
+	show_webview(markview);
+
+	// apply some css
+	markview_webview_apply_css(markview, (char*)prism_css_data);
+	// run some javascript and apply some css
+	markview_webview_run_javascript(markview, (char*)prism_min_js_data, prism_min_js_size);
+	markview_webview_run_javascript(markview, (char*)purify_min_js_data, purify_min_js_size);
 
 	return markview;
 }
@@ -216,20 +253,18 @@ bool markview_render_from_file(markview_t app, char* title, char* filename) {
 
 	char* content = markview_file_read(filename);
 
-	return markview_render_from_string(app, title, content);
+	bool returnValue = markview_render_from_string(app, title, content);
+
+	if (content)
+		free(content);
+
+	return returnValue;
 }
 
 bool markview_render_from_string(markview_t app, char* title, char* content) {
 	markview_detail* markview = app;
 
-	// if (markview->html) {
-	// 	// navigate everytime but first. This allows us to use the nativa navigation
-	// 	webview_navigate(markview->webview, "about:blank");
-	// }
-
-	// deallocate in case we call multiple times
-	if (markview->html)
-		free(markview->html);
+	char* html = markview_markdown_to_html(content, strlen(content), MARKVIEW_CMARK_OPTIONS);
 
 	if (markview->title)
 		free(markview->title);
@@ -237,19 +272,11 @@ bool markview_render_from_string(markview_t app, char* title, char* content) {
 	size_t titleSize = strlen(MARKVIEW_PROGRAM_NAME) + strlen(MARKVIEW_TITLE_SEPARATOR) + strlen(title) + 1;
 
 	markview->title = malloc(titleSize);
-	// TODO: assert memory is valid
-	snprintf(markview->title, titleSize , "%s%s%s", MARKVIEW_PROGRAM_NAME, MARKVIEW_TITLE_SEPARATOR, title);
+	snprintf(markview->title, titleSize , "%s%s%s", title, MARKVIEW_TITLE_SEPARATOR, MARKVIEW_PROGRAM_NAME);
 
-	markview->html = markview_markdown_to_html(content, strlen(content), MARKVIEW_CMARK_OPTIONS);
-
-	webview_set_html(markview->webview, markview->html);
 	webview_set_title(markview->webview, markview->title);
 
-	fprintf(stdout, "apply scripts and css for '%s'\n", markview->title);
-	// _markview_run_javascript(markview, "alert(1)");
-	_markview_run_javascript(markview, (char*)markview_js_data);
-	_markview_run_javascript(markview, (char*)prism_min_js_data);
-	_markview_apply_css(markview, (char*)prism_css_data);
+	markview_webview_render_html(markview, html);
 
 	return true;
 }
@@ -261,42 +288,33 @@ int markview_run(markview_t app) {
 
 	while (running) {
 		while (SDL_PollEvent(&event)) {
-			// SDL_Log("event %d\n", event.type);
-			if (event.type == SDL_EVENT_QUIT) {
+			switch (event.type) {
+			case SDL_EVENT_QUIT:
 				SDL_Log("Quit, please!");
 				running = 0;
-				continue;
-			}
-
-			if (event.type == SDL_EVENT_WINDOW_RESIZED) {
+				break;
+			case SDL_EVENT_WINDOW_RESIZED:
 				show_webview(markview);
-				continue;
-			}
-
-			// only cathces when hovered over windows borders because webview widget eats most events.
-			// to circunvent we resize the webview widget to (0,0) so that we can get SDL_EVENT_DROP_FILE
-			if (event.type == SDL_EVENT_DROP_BEGIN) {
+				break;
+			case SDL_EVENT_DROP_BEGIN:
+				// Only catches when hovered over window borders because webview widget eats most events.
+				// To circumvent, we resize the webview widget to (0, 0) so that we can get SDL_EVENT_DROP_FILE
 				hide_webview(markview);
-				continue;
-			}
-
-			if (event.type == SDL_EVENT_DROP_FILE) {
+				break;
+			case SDL_EVENT_DROP_FILE:
 				markview_render_from_file(markview, (char*)event.drop.data, (char*)event.drop.data);
-				continue;
-			}
-
-			// resize webview widget back now that we already handled SDL_EVENT_DROP_FILE
-			if (event.type == SDL_EVENT_DROP_COMPLETE) {
+				break;
+			case SDL_EVENT_DROP_COMPLETE:
+				// Resize webview widget back now that we already handled SDL_EVENT_DROP_FILE
 				show_webview(markview);
-				continue;
-			}
-
-			if (event.type == SDL_EVENT_KEY_DOWN) {
+				break;
+			case SDL_EVENT_KEY_DOWN:
 				if (event.key.scancode == SDL_SCANCODE_F11) {
 					SDL_SetWindowFullscreen(
 						markview->window,
 						!(SDL_GetWindowFlags(markview->window) & SDL_WINDOW_FULLSCREEN));
 				}
+				break;
 			}
 		}
 	}
@@ -314,14 +332,6 @@ int markview_run(markview_t app) {
 	SDL_DestroyRenderer(markview->renderer);
 	SDL_DestroyWindow(markview->window);
 	SDL_Quit();
-
-	if (markview->title) {
-		free(markview->title);
-	}
-
-	if (markview->html) {
-		free(markview->html);
-	}
 
 	return 0;
 }

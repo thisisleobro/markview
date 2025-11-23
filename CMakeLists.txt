@@ -82,10 +82,11 @@ endif()
 # embed stuff
 include(cmake/FileEmbed.cmake)
 FileEmbedSetup()
+FileEmbedAdd(assets/shell.html)
+FileEmbedAdd(vendor/DOMPurify/dist/purify.min.js)
 FileEmbedAdd(assets/welcome.md)
-FileEmbedAdd(assets/prism.min.js)
 FileEmbedAdd(assets/prism.css)
-FileEmbedAdd(assets/markview.js)
+FileEmbedAdd(assets/prism.min.js)
 target_link_libraries(${PROJECT_NAME} PRIVATE file_embed)
 
 # cmark stuff
