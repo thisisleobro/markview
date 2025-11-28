@@ -31,6 +31,7 @@
 #include <purify_min_js.h>
 #include <prism_css.h>
 #include <prism_min_js.h>
+#include <styles_css.h>
 #include "settings.h"
 #include "utils.h"
 #include <cJSON.h>
@@ -238,6 +239,7 @@ markview_t markview_create() {
 
 	// apply some css
 	markview_webview_apply_css(markview, (char*)prism_css_data);
+	markview_webview_apply_css(markview, (char*)styles_css_data);
 	// run some javascript and apply some css
 	markview_webview_run_javascript(markview, (char*)prism_min_js_data, prism_min_js_size);
 	markview_webview_run_javascript(markview, (char*)purify_min_js_data, purify_min_js_size);
