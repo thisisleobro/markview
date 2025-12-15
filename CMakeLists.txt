@@ -84,10 +84,10 @@ include(cmake/FileEmbed.cmake)
 FileEmbedSetup()
 FileEmbedAdd(assets/shell.html)
 FileEmbedAdd(assets/styles.css)
-FileEmbedAdd(vendor/DOMPurify/dist/purify.min.js)
 FileEmbedAdd(assets/welcome.md)
-FileEmbedAdd(assets/prism.css)
-FileEmbedAdd(assets/prism.min.js)
+FileEmbedAdd(vendor/DOMPurify/dist/purify.min.js)
+FileEmbedAdd(vendor/prism.css)
+FileEmbedAdd(vendor/prism.min.js)
 target_link_libraries(${PROJECT_NAME} PRIVATE file_embed)
 
 # cmark stuff
