@@ -31,6 +31,8 @@
 #include <purify_min_js.h>
 #include <prism_css.h>
 #include <prism_min_js.h>
+#include <core_js.h>
+#include <script_js.h>
 #include <styles_css.h>
 #include "settings.h"
 #include "utils.h"
@@ -230,19 +232,24 @@ markview_t markview_create() {
 	}
 
 	webview_set_html(markview->webview, (char*)shell_html_data);
+
 	// bind functions
 	webview_bind(markview->webview, "markview_toggle_fullscreen", markview_toggle_fullscreen, markview);
 	webview_bind(markview->webview, "markview_open_file", markview_open_file, markview);
 	webview_bind(markview->webview, "markview_hide_webview", markview_hide_webview, markview);
+	markview_webview_run_javascript(markview, (char*)core_js_data, core_js_size);
+
 	// TODO: pass color scheme before showing
 	show_webview(markview);
+
+	// run some javascript
+	markview_webview_run_javascript(markview, (char*)prism_min_js_data, prism_min_js_size);
+	markview_webview_run_javascript(markview, (char*)purify_min_js_data, purify_min_js_size);
+	markview_webview_run_javascript(markview, (char*)script_js_data, script_js_size);
 
 	// apply some css
 	markview_webview_apply_css(markview, (char*)prism_css_data);
 	markview_webview_apply_css(markview, (char*)styles_css_data);
-	// run some javascript and apply some css
-	markview_webview_run_javascript(markview, (char*)prism_min_js_data, prism_min_js_size);
-	markview_webview_run_javascript(markview, (char*)purify_min_js_data, purify_min_js_size);
 
 	return markview;
 }
