@@ -41,7 +41,7 @@ document.addEventListener('click', interceptClickEvent);
 // hide the webview widget so we can capture events
 document.addEventListener("dragover", (e) => {
 	e.preventDefault();
-	if (e.target.tagName === 'HTML') {
+	if (e.srcElement?.tagName === 'HTML') {
 		markview_hide_webview();
 	}
 })

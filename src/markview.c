@@ -71,7 +71,7 @@ char* _markview_format_javasript_call(markview_t app, char* functionName, char* 
 bool markview_webview_run_javascript(markview_t app, char* content, size_t lenght) {
 	markview_detail* markview = app;
 
-	char* tempContent = malloc(lenght);
+	char* tempContent = malloc(lenght + 1);
 	strncpy(tempContent, content, lenght);
 
 	tempContent[lenght] = '\0';
@@ -126,7 +126,7 @@ bool markview_webview_apply_css(markview_t app, char* content) {
 void show_webview(markview_detail* markview) {
 	HWND widget_handle = (HWND)webview_get_native_handle(markview->webview, WEBVIEW_NATIVE_HANDLE_KIND_UI_WIDGET);
 	if (widget_handle) {
-		RECT r = {};
+		RECT r = {0};
 		if (GetClientRect(GetParent(widget_handle), &r)) {
 			MoveWindow(widget_handle, r.left, r.top, r.right - r.left, r.bottom - r.top, TRUE);
 		}
@@ -136,7 +136,7 @@ void show_webview(markview_detail* markview) {
 void hide_webview(markview_detail* markview) {
 	HWND widget_handle = (HWND)webview_get_native_handle(markview->webview, WEBVIEW_NATIVE_HANDLE_KIND_UI_WIDGET);
 	if (widget_handle) {
-		RECT r = {};
+		RECT r = {0};
 		if (GetClientRect(GetParent(widget_handle), &r)) {
 			MoveWindow(widget_handle, r.left, r.top, 0, 0, TRUE);
 		}

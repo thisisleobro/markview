@@ -57,9 +57,10 @@ set(SDL_DIALOG OFF)
 add_compile_definitions(-DCMARK_GFM_STATIC_DEFINE=1)
 add_compile_definitions(-DCMARK_GFM_EXTENSIONS_STATIC_DEFINE=1)
 
-include_directories(${PROJECT_NAME} include)
-add_compile_definitions(-DCMAKE_EXE_LINKER_FLAGS="-static")
-target_link_libraries(${PROJECT_NAME} PRIVATE -static-libstdc++)
+if(MINGW)
+	add_compile_definitions(-DCMAKE_EXE_LINKER_FLAGS="-static")
+	target_link_libraries(${PROJECT_NAME} PRIVATE -static-libstdc++)
+endif()
 
 cmake_path(GET CMAKE_C_COMPILER PARENT_PATH BINFOLDER)
 cmake_path(GET BINFOLDER PARENT_PATH TOOLCHAINFOLDER)
